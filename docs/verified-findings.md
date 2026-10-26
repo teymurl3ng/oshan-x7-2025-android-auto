@@ -22,7 +22,8 @@ checked against the copy on the car. Here are its details:
 - Bytes: `8256512`
 - SHA-256: `0c50bad53fa2116e98928c74be78e1b9609a1d3f73d3ee42726b001ae7ddefb0`
 
-I use this hash as another compatibility check. It doesn't prove every other
+I use this hash as another compatibility check even when the qualified launcher
+update is active under `/data/app/`. It doesn't prove every other
 firmware file is identical. The saved SystemUI APK copy was incomplete, so I
 haven't used its partial-file hash as if it were the full app's hash.
 
@@ -98,9 +99,9 @@ Android Auto session.
 The factory preference accepts a package name, but I haven't qualified other
 apps for this release.
 
-The changes also survived a full reboot on my car. I don't have a saved
-post-reboot device capture or a separate cold ignition-cycle test here.
-The installer won't reboot the car automatically.
+The changes survived a normal Android reboot on my car. Later sessions retained
+post-boot setting read-back and launcher captures, as described below. A cold
+ignition power cycle has not been tested. The installer does not reboot the car.
 
 ## The later screenshot, and what's still untested
 
@@ -119,3 +120,38 @@ for the screenshot, so it doesn't count as an installer test.
   haven't completed its full setup-and-restore cycle on the car yet.
 
 I've kept the remaining car-test checklist in [testing.md](testing.md).
+
+## Launcher integration, later on 2026-10-26
+
+The final launcher update makes the large Connection/CarAuto card open OpenHU
+and hides its redundant small tile and launcher/test entries from app discovery
+and saved rows. Retired CarAuto shortcut/connection handling is removed or
+redirected to OpenHU. Native vehicle/media components and the Home/Back overlays
+remain present. The before-and-after pictures in the README are actual Home
+captures; the after picture was taken following a normal Android reboot.
+
+The first signed update passed actual installation, large-card/Home and owner
+native-control checks, factory rollback/reinstallation, a normal Android reboot
+and a wired AA/Home test. The final menu-cleanup build was subsequently installed
+and read back as SHA-256
+`03ef3a861c43124f184f0d675400f9a6022b0100f1a96e3e498dc096041f66b8`,
+UID 1000, version code 20240726 and default HOME
+`com.chinatsp.launcher/.MainAct`. The factory system APK remained unchanged.
+After another normal Android reboot, its exact hash and Home identity persisted;
+the unwanted icons were absent and the large card/Home behavior was observed.
+The owner confirmed that the native controls they tried worked normally.
+
+The owner reports AA works on the video-recording USB port. The ordinary port
+still failed after about 10–15 seconds; earlier kernel logs showed USB resets and
+descriptor/transfer error -71. This does not establish a physical, power or
+firmware cause. The latest phone answer did not separately enumerate audio,
+touch or popup behavior. Native assistant and AA microphone recognition remain
+unresolved, although Gemini works directly on the phone. Microphone investigation
+was paused without a fix; the reversible AEC path experiment was rolled back.
+
+The bundled binary patch was applied locally to the exact factory APK and its
+output compared byte for byte to this final installed build. The public v0.2
+setup/restore implementation adds strict active/base launcher checks and a
+write-ahead ownership journal, with simulated interruption/recovery tests. Its
+unified live setup/restore cycle, wireless AA and a cold ignition cycle remain
+untested. [Launcher implementation and evidence limits](launcher.md).

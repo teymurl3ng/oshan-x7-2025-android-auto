@@ -1,0 +1,1875 @@
+--- a/AndroidManifest.xml
++++ b/AndroidManifest.xml
+@@ -22,13 +22,6 @@
+                 <category android:name="android.intent.category.DEFAULT"/>
+             </intent-filter>
+         </activity>
+-        <receiver android:enabled="true" android:exported="true" android:name="com.chinatsp.launcher.receiver.ReceiverEr">
+-            <intent-filter android:priority="1000">
+-                <action android:name="com.eryanet.link.disconnected"/>
+-                <action android:name="com.eryanet.link.connected"/>
+-                <category android:name="android.intent.category.LAUNCHER"/>
+-            </intent-filter>
+-        </receiver>
+         <receiver android:exported="true" android:name="com.chinatsp.launcher.receiver.BootReceiver">
+             <intent-filter android:priority="1000">
+                 <action android:name="android.intent.action.BOOT_COMPLETED"/>
+--- a/res/drawable/open_headunit_card.xml
++++ b/res/drawable/open_headunit_card.xml
+@@ -0,0 +1,7 @@
++<?xml version="1.0" encoding="utf-8"?>
++<vector xmlns:android="http://schemas.android.com/apk/res/android"
++    android:width="180dp" android:height="180dp" android:viewportWidth="180" android:viewportHeight="180">
++    <path android:fillColor="#287BE0" android:pathData="M90,2 A88,88 0,1 0,90 178 A88,88 0,1 0,90 2" />
++    <path android:fillColor="#FFFFFF" android:pathData="M90,32 L136,128 L107,113 L90,78 L73,113 L44,128 Z" />
++    <path android:fillColor="#D9EBFF" android:pathData="M90,105 L104,133 L90,126 L76,133 Z" />
++</vector>
+--- a/res/layout/home_nav_guide.xml
++++ b/res/layout/home_nav_guide.xml
+@@ -6,7 +6,7 @@
+         <TextView android:textSize="30.0px" android:textColor="?appTvColor" android:gravity="bottom" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="@dimen/x26" android:text="@string/Navigation" android:layout_marginStart="@dimen/x16" />
+     </LinearLayout>
+     <LinearLayout android:layout_gravity="center_horizontal" android:orientation="vertical" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="34.0px">
+-        <ImageView android:layout_gravity="center" android:layout_width="180.0px" android:layout_height="180.0px" android:src="@drawable/internet" />
++        <ImageView android:layout_gravity="center" android:layout_width="180.0px" android:layout_height="180.0px" android:src="@drawable/open_headunit_card" />
+         <TextView android:textSize="24.0sp" android:textColor="?appTvColor" android:layout_gravity="center" android:id="@id/tvStatus" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="34.0sp" android:text="@string/Internetnavigation" />
+         <TextView android:textSize="@dimen/sp18" android:textColor="?appTvColor" android:ellipsize="end" android:layout_gravity="center|bottom" android:id="@id/tvConnect" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="62.0px" android:text="@string/nav_ununited" android:singleLine="true" android:layout_marginStart="28.0px" android:layout_marginEnd="22.0px" android:breakStrategy="simple" android:hyphenationFrequency="none" />
+     </LinearLayout>
+--- a/res/values/strings.xml
++++ b/res/values/strings.xml
+@@ -1,7 +1,7 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <resources>
+-    <string name="Internetnavigation">手机互联</string>
+-    <string name="Navigation">连接</string>
++    <string name="Internetnavigation">Open Headunit</string>
++    <string name="Navigation">Android Auto</string>
+     <string name="abc_action_bar_home_description">Navigate home</string>
+     <string name="abc_action_bar_up_description">Navigate up</string>
+     <string name="abc_action_menu_overflow_description">More options</string>
+@@ -138,8 +138,8 @@
+     <string name="mtrl_picker_toggle_to_text_input_mode">Switch to text input mode</string>
+     <string name="mtrl_picker_toggle_to_year_selection">Tap to switch to selecting a year</string>
+     <string name="mtrl_timepicker_confirm">OK</string>
+-    <string name="nav_connected">设备已连接</string>
+-    <string name="nav_ununited">未连接</string>
++    <string name="nav_connected">Tap to open Android Auto</string>
++    <string name="nav_ununited">Tap to open Android Auto</string>
+     <string name="next">Next</string>
+     <string name="notplay_incall">通话中，不支持播放…</string>
+     <string name="password_toggle_content_description">Show password</string>
+--- a/res/values-en/strings.xml
++++ b/res/values-en/strings.xml
+@@ -1,7 +1,7 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <resources>
+-    <string name="Internetnavigation">CarAuto</string>
+-    <string name="Navigation">Connection</string>
++    <string name="Internetnavigation">Open Headunit</string>
++    <string name="Navigation">Android Auto</string>
+     <string name="action_settings">Settings</string>
+     <string name="app_name">launcher</string>
+     <string name="brvah_load_complete">Click to load more</string>
+@@ -15,8 +15,8 @@
+     <string name="huanshi">Surround view driving recorder</string>
+     <string name="left_scroll">Swiping left</string>
+     <string name="listener_default">Just listen</string>
+-    <string name="nav_connected">Device connected</string>
+-    <string name="nav_ununited">Not connected</string>
++    <string name="nav_connected">Tap to open Android Auto</string>
++    <string name="nav_ununited">Tap to open Android Auto</string>
+     <string name="next">Next</string>
+     <string name="notplay_incall">During a call, playback is not supported…</string>
+     <string name="previous">Previous</string>
+--- a/res/values-es/strings.xml
++++ b/res/values-es/strings.xml
+@@ -1,7 +1,7 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <resources>
+-    <string name="Internetnavigation">CarAuto</string>
+-    <string name="Navigation">Conectividad</string>
++    <string name="Internetnavigation">Open Headunit</string>
++    <string name="Navigation">Android Auto</string>
+     <string name="abc_action_bar_home_description">Ir a inicio</string>
+     <string name="abc_action_bar_up_description">Desplazarse hacia arriba</string>
+     <string name="abc_action_menu_overflow_description">Más opciones</string>
+@@ -91,8 +91,8 @@
+     <string name="mtrl_picker_toggle_to_day_selection">Toca para seleccionar un día</string>
+     <string name="mtrl_picker_toggle_to_text_input_mode">Cambiar al modo de introducción Texto</string>
+     <string name="mtrl_picker_toggle_to_year_selection">Toca para seleccionar un año</string>
+-    <string name="nav_connected">Dispositivo conectado</string>
+-    <string name="nav_ununited">No Conectado</string>
++    <string name="nav_connected">Tap to open Android Auto</string>
++    <string name="nav_ununited">Tap to open Android Auto</string>
+     <string name="next">Next</string>
+     <string name="notplay_incall">Durante una llamada, no se admite la reproducción…</string>
+     <string name="password_toggle_content_description">Mostrar contraseña</string>
+--- a/smali/com/chinatsp/launcher/BaseAct.smali
++++ b/smali/com/chinatsp/launcher/BaseAct.smali
+@@ -71,7 +71,6 @@
+ 
+ .field private mPositionTag:I
+ 
+-.field mReceiverEr:Lcom/chinatsp/launcher/receiver/ReceiverEr;
+ 
+ .field private mRunnable:Lcom/chinatsp/launcher/BaseAct$MyRunnable;
+ 
+@@ -585,138 +584,6 @@
+     return v1
+ .end method
+ 
+-.method private getOtherApp(Ljava/lang/String;)Lcom/chinatsp/launcher/bean/BeanApp;
+-    .locals 2
+-
+-    .line 583
+-    new-instance v0, Lcom/chinatsp/launcher/bean/BeanApp;
+-
+-    invoke-direct {v0}, Lcom/chinatsp/launcher/bean/BeanApp;-><init>()V
+-
+-    const-string v1, "com.eryanet.vlink"
+-
+-    .line 584
+-    invoke-virtual {v0, v1}, Lcom/chinatsp/launcher/bean/BeanApp;->setPkg(Ljava/lang/String;)V
+-
+-    .line 585
+-    invoke-virtual {v0, p1}, Lcom/chinatsp/launcher/bean/BeanApp;->setAppName(Ljava/lang/String;)V
+-
+-    const/4 v1, 0x1
+-
+-    .line 586
+-    invoke-virtual {v0, v1}, Lcom/chinatsp/launcher/bean/BeanApp;->setSys(Z)V
+-
+-    const-string v1, "Spotify"
+-
+-    .line 589
+-    invoke-virtual {v1, p1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+-
+-    move-result v1
+-
+-    if-eqz v1, :cond_0
+-
+-    const/4 p1, 0x4
+-
+-    .line 590
+-    invoke-virtual {v0, p1}, Lcom/chinatsp/launcher/bean/BeanApp;->setPagePosition(I)V
+-
+-    const-string p1, "spotify"
+-
+-    .line 591
+-    invoke-virtual {v0, p1}, Lcom/chinatsp/launcher/bean/BeanApp;->setExtraName(Ljava/lang/String;)V
+-
+-    goto :goto_0
+-
+-    :cond_0
+-    const-string v1, "Weather"
+-
+-    .line 592
+-    invoke-virtual {v1, p1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+-
+-    move-result v1
+-
+-    if-eqz v1, :cond_1
+-
+-    const/4 p1, 0x2
+-
+-    .line 593
+-    invoke-virtual {v0, p1}, Lcom/chinatsp/launcher/bean/BeanApp;->setPagePosition(I)V
+-
+-    const-string p1, "weather"
+-
+-    .line 594
+-    invoke-virtual {v0, p1}, Lcom/chinatsp/launcher/bean/BeanApp;->setExtraName(Ljava/lang/String;)V
+-
+-    goto :goto_0
+-
+-    :cond_1
+-    const-string v1, "Google Map"
+-
+-    .line 595
+-    invoke-virtual {v1, p1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+-
+-    move-result v1
+-
+-    if-eqz v1, :cond_2
+-
+-    const/4 p1, 0x3
+-
+-    .line 596
+-    invoke-virtual {v0, p1}, Lcom/chinatsp/launcher/bean/BeanApp;->setPagePosition(I)V
+-
+-    const-string p1, "navi"
+-
+-    .line 597
+-    invoke-virtual {v0, p1}, Lcom/chinatsp/launcher/bean/BeanApp;->setExtraName(Ljava/lang/String;)V
+-
+-    goto :goto_0
+-
+-    :cond_2
+-    const-string v1, "YouTube"
+-
+-    .line 598
+-    invoke-virtual {v1, p1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+-
+-    move-result v1
+-
+-    if-eqz v1, :cond_3
+-
+-    const/4 p1, 0x5
+-
+-    .line 599
+-    invoke-virtual {v0, p1}, Lcom/chinatsp/launcher/bean/BeanApp;->setPagePosition(I)V
+-
+-    const-string/jumbo p1, "youtube"
+-
+-    .line 600
+-    invoke-virtual {v0, p1}, Lcom/chinatsp/launcher/bean/BeanApp;->setExtraName(Ljava/lang/String;)V
+-
+-    goto :goto_0
+-
+-    :cond_3
+-    const-string v1, "Mirror"
+-
+-    .line 601
+-    invoke-virtual {v1, p1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+-
+-    move-result p1
+-
+-    if-eqz p1, :cond_4
+-
+-    const/4 p1, 0x6
+-
+-    .line 602
+-    invoke-virtual {v0, p1}, Lcom/chinatsp/launcher/bean/BeanApp;->setPagePosition(I)V
+-
+-    const-string p1, "mirror"
+-
+-    .line 603
+-    invoke-virtual {v0, p1}, Lcom/chinatsp/launcher/bean/BeanApp;->setExtraName(Ljava/lang/String;)V
+-
+-    :cond_4
+-    :goto_0
+-    return-object v0
+-.end method
+ 
+ .method private getVoiceApp()Lcom/chinatsp/launcher/bean/BeanApp;
+     .locals 2
+@@ -772,31 +639,6 @@
+     iget-object v0, p0, Lcom/chinatsp/launcher/BaseAct;->receiverFilter:Lcom/chinatsp/launcher/receiver/ReceiverFilter;
+ 
+     invoke-static {p0, v0}, Lcom/chinatsp/launcher/receiver/ReceiverFilter;->register(Landroid/content/Context;Lcom/chinatsp/launcher/receiver/ReceiverFilter;)V
+-
+-    .line 170
+-    new-instance v0, Landroid/content/IntentFilter;
+-
+-    invoke-direct {v0}, Landroid/content/IntentFilter;-><init>()V
+-
+-    const-string v1, "com.eryanet.link.disconnected"
+-
+-    .line 171
+-    invoke-virtual {v0, v1}, Landroid/content/IntentFilter;->addAction(Ljava/lang/String;)V
+-
+-    const-string v1, "com.eryanet.link.connected"
+-
+-    .line 172
+-    invoke-virtual {v0, v1}, Landroid/content/IntentFilter;->addAction(Ljava/lang/String;)V
+-
+-    .line 173
+-    new-instance v1, Lcom/chinatsp/launcher/receiver/ReceiverEr;
+-
+-    invoke-direct {v1}, Lcom/chinatsp/launcher/receiver/ReceiverEr;-><init>()V
+-
+-    iput-object v1, p0, Lcom/chinatsp/launcher/BaseAct;->mReceiverEr:Lcom/chinatsp/launcher/receiver/ReceiverEr;
+-
+-    .line 174
+-    invoke-virtual {p0, v1, v0}, Lcom/chinatsp/launcher/BaseAct;->registerReceiver(Landroid/content/BroadcastReceiver;Landroid/content/IntentFilter;)Landroid/content/Intent;
+ 
+     .line 176
+     new-instance v0, Landroid/content/IntentFilter;
+@@ -1341,10 +1183,7 @@
+ .method public addApp(Ljava/lang/String;)V
+     .locals 7
+ 
+-    const-string v0, "com.eryanet.vlink"
+-
+-    .line 371
+-    invoke-virtual {p1, v0}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
++    invoke-static {p1}, Lcom/chinatsp/launcher/utils/UtilsPkg;->isRetiredPackage(Ljava/lang/String;)Z
+ 
+     move-result v0
+ 
+@@ -2670,59 +2509,8 @@
+ .end method
+ 
+ .method public launcherNavigation()V
+-    .locals 4
+-
+-    .line 695
+-    new-instance v0, Lcom/chinatsp/launcher/bean/BeanApp;
+-
+-    invoke-direct {v0}, Lcom/chinatsp/launcher/bean/BeanApp;-><init>()V
+-
+-    const-string v1, "com.eryanet.vlink"
+-
+-    .line 696
+-    invoke-virtual {v0, v1}, Lcom/chinatsp/launcher/bean/BeanApp;->setPkg(Ljava/lang/String;)V
+-
+-    const-string v1, "lastest"
+-
+-    .line 697
+-    invoke-virtual {v0, v1}, Lcom/chinatsp/launcher/bean/BeanApp;->setExtraName(Ljava/lang/String;)V
+-
+-    const/4 v1, 0x1
+-
+-    new-array v1, v1, [Ljava/lang/Object;
+-
+-    .line 698
+-    new-instance v2, Ljava/lang/StringBuilder;
+-
+-    invoke-direct {v2}, Ljava/lang/StringBuilder;-><init>()V
+-
+-    const-string v3, "launcherNavigation:"
+-
+-    invoke-virtual {v2, v3}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+-
+-    move-result-object v2
+-
+-    invoke-virtual {v0}, Lcom/chinatsp/launcher/bean/BeanApp;->toString()Ljava/lang/String;
+-
+-    move-result-object v3
+-
+-    invoke-virtual {v2, v3}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+-
+-    move-result-object v2
+-
+-    invoke-virtual {v2}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+-
+-    move-result-object v2
+-
+-    const/4 v3, 0x0
+-
+-    aput-object v2, v1, v3
+-
+-    invoke-static {v1}, Lcom/chinatsp/launcher/log/Xlog;->logs([Ljava/lang/Object;)V
+-
+-    .line 699
+-    invoke-static {p0, v0}, Lcom/chinatsp/launcher/utils/UtilsPkg;->startApk(Landroid/content/Context;Lcom/chinatsp/launcher/bean/BeanApp;)V
+-
++    .locals 0
++    invoke-static {p0}, Lcom/chinatsp/launcher/utils/UtilsPkg;->launchOpenHeadunit(Landroid/content/Context;)V
+     return-void
+ .end method
+ 
+@@ -2803,59 +2591,13 @@
+ 
+     move-result-object v2
+ 
+-    const-string v3, "Spotify"
+-
+-    .line 537
+-    invoke-direct {p0, v3}, Lcom/chinatsp/launcher/BaseAct;->getOtherApp(Ljava/lang/String;)Lcom/chinatsp/launcher/bean/BeanApp;
+-
+-    move-result-object v3
+-
+-    invoke-interface {v2, v7, v3}, Ljava/util/List;->add(ILjava/lang/Object;)V
+-
+-    const-string v3, "Google Map"
+-
+-    .line 538
+-    invoke-direct {p0, v3}, Lcom/chinatsp/launcher/BaseAct;->getOtherApp(Ljava/lang/String;)Lcom/chinatsp/launcher/bean/BeanApp;
+-
+-    move-result-object v3
+-
+-    invoke-interface {v2, v4, v3}, Ljava/util/List;->add(ILjava/lang/Object;)V
+-
+-    const-string v3, "YouTube"
+-
+-    .line 539
+-    invoke-direct {p0, v3}, Lcom/chinatsp/launcher/BaseAct;->getOtherApp(Ljava/lang/String;)Lcom/chinatsp/launcher/bean/BeanApp;
+-
+-    move-result-object v3
+-
+-    invoke-interface {v2, v3}, Ljava/util/List;->add(Ljava/lang/Object;)Z
+-
+-    const-string v3, "Weather"
+-
+-    .line 540
+-    invoke-direct {p0, v3}, Lcom/chinatsp/launcher/BaseAct;->getOtherApp(Ljava/lang/String;)Lcom/chinatsp/launcher/bean/BeanApp;
+-
+-    move-result-object v3
+-
+-    invoke-interface {v2, v3}, Ljava/util/List;->add(Ljava/lang/Object;)Z
+-
+-    const-string v3, "Mirror"
+-
+-    .line 541
+-    invoke-direct {p0, v3}, Lcom/chinatsp/launcher/BaseAct;->getOtherApp(Ljava/lang/String;)Lcom/chinatsp/launcher/bean/BeanApp;
+-
+-    move-result-object v3
+-
+-    invoke-interface {v2, v3}, Ljava/util/List;->add(Ljava/lang/Object;)Z
+-
+-    const/4 v3, 0x4
+ 
+     .line 544
+     invoke-direct {p0}, Lcom/chinatsp/launcher/BaseAct;->getVoiceApp()Lcom/chinatsp/launcher/bean/BeanApp;
+ 
+     move-result-object v5
+ 
+-    invoke-interface {v2, v3, v5}, Ljava/util/List;->add(ILjava/lang/Object;)V
++    invoke-interface {v2, v5}, Ljava/util/List;->add(Ljava/lang/Object;)Z
+ 
+     .line 546
+     invoke-interface {v2}, Ljava/util/List;->size()I
+@@ -3174,71 +2916,6 @@
+ 
+     invoke-static {p1}, Lcom/chinatsp/launcher/utils/CarUtil;->getInstance(Landroid/content/Context;)Lcom/chinatsp/launcher/utils/CarUtil;
+ 
+-    const/4 p1, 0x2
+-
+-    :try_start_1
+-    new-array v1, p1, [Ljava/lang/Object;
+-
+-    const-string v2, "autoCar111"
+-
+-    aput-object v2, v1, v3
+-
+-    .line 144
+-    invoke-virtual {p0}, Lcom/chinatsp/launcher/BaseAct;->getContentResolver()Landroid/content/ContentResolver;
+-
+-    move-result-object v2
+-
+-    const-string v4, "eryanet.connection.state"
+-
+-    invoke-static {v2, v4}, Landroid/provider/Settings$Secure;->getString(Landroid/content/ContentResolver;Ljava/lang/String;)Ljava/lang/String;
+-
+-    move-result-object v2
+-
+-    aput-object v2, v1, v0
+-
+-    invoke-static {v1}, Lcom/chinatsp/launcher/log/Xlog;->logs([Ljava/lang/Object;)V
+-
+-    new-array p1, p1, [Ljava/lang/Object;
+-
+-    const-string v1, "autoCar"
+-
+-    aput-object v1, p1, v3
+-
+-    .line 145
+-    invoke-virtual {p0}, Lcom/chinatsp/launcher/BaseAct;->getContentResolver()Landroid/content/ContentResolver;
+-
+-    move-result-object v1
+-
+-    const-string v2, "eryanet.connected.device.name"
+-
+-    invoke-static {v1, v2}, Landroid/provider/Settings$Secure;->getString(Landroid/content/ContentResolver;Ljava/lang/String;)Ljava/lang/String;
+-
+-    move-result-object v1
+-
+-    aput-object v1, p1, v0
+-
+-    invoke-static {p1}, Lcom/chinatsp/launcher/log/Xlog;->logs([Ljava/lang/Object;)V
+-    :try_end_1
+-    .catch Ljava/lang/Exception; {:try_start_1 .. :try_end_1} :catch_0
+-
+-    goto :goto_0
+-
+-    :catch_0
+-    move-exception p1
+-
+-    .line 147
+-    invoke-virtual {p1}, Ljava/lang/Exception;->printStackTrace()V
+-
+-    new-array p1, v0, [Ljava/lang/Object;
+-
+-    const-string v0, "error"
+-
+-    aput-object v0, p1, v3
+-
+-    .line 148
+-    invoke-static {p1}, Lcom/chinatsp/launcher/log/Xlog;->logs([Ljava/lang/Object;)V
+-
+-    .line 151
+     :goto_0
+     invoke-virtual {p0}, Lcom/chinatsp/launcher/BaseAct;->initListener()V
+ 
+@@ -3338,16 +3015,7 @@
+     .line 627
+     invoke-virtual {p0, v0}, Lcom/chinatsp/launcher/BaseAct;->unregisterReceiver(Landroid/content/BroadcastReceiver;)V
+ 
+-    .line 629
+     :cond_1
+-    iget-object v0, p0, Lcom/chinatsp/launcher/BaseAct;->mReceiverEr:Lcom/chinatsp/launcher/receiver/ReceiverEr;
+-
+-    if-eqz v0, :cond_2
+-
+-    .line 630
+-    invoke-virtual {p0, v0}, Lcom/chinatsp/launcher/BaseAct;->unregisterReceiver(Landroid/content/BroadcastReceiver;)V
+-
+-    .line 632
+     :cond_2
+     iget-object v0, p0, Lcom/chinatsp/launcher/BaseAct;->mIflyHideObserver:Lcom/chinatsp/launcher/voice/IflyHideObserver;
+ 
+--- a/smali/com/chinatsp/launcher/MainAct$MyVoiceManagerCallback.smali
++++ b/smali/com/chinatsp/launcher/MainAct$MyVoiceManagerCallback.smali
+@@ -125,156 +125,41 @@
+ .end method
+ 
+ .method public startApp(Ljava/lang/String;)V
+-    .locals 5
+-
+-    const/4 v0, 0x2
+-
+-    new-array v1, v0, [Ljava/lang/Object;
+-
+-    .line 394
+-    invoke-static {}, Lcom/chinatsp/launcher/MainAct;->access$200()Ljava/lang/String;
+-
+-    move-result-object v2
+-
+-    const/4 v3, 0x0
+-
+-    aput-object v2, v1, v3
+-
+-    new-instance v2, Ljava/lang/StringBuilder;
+-
+-    invoke-direct {v2}, Ljava/lang/StringBuilder;-><init>()V
+-
+-    const-string v4, "into startApp:"
+-
+-    invoke-virtual {v2, v4}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+-
+-    move-result-object v2
+-
+-    invoke-virtual {v2, p1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+-
+-    move-result-object v2
+-
+-    invoke-virtual {v2}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+-
+-    move-result-object v2
+-
+-    const/4 v4, 0x1
+-
+-    aput-object v2, v1, v4
+-
+-    invoke-static {v1}, Lcom/chinatsp/launcher/log/Xlog;->d([Ljava/lang/Object;)V
+-
+-    .line 395
+-    iget-object v1, p0, Lcom/chinatsp/launcher/MainAct$MyVoiceManagerCallback;->this$0:Lcom/chinatsp/launcher/MainAct;
+-
+-    invoke-static {v1, p1}, Lcom/chinatsp/launcher/MainAct;->access$300(Lcom/chinatsp/launcher/MainAct;Ljava/lang/String;)Lcom/chinatsp/launcher/bean/BeanApp;
+-
++    .locals 3
++    iget-object v0, p0, Lcom/chinatsp/launcher/MainAct$MyVoiceManagerCallback;->this$0:Lcom/chinatsp/launcher/MainAct;
++    const-string v1, "navigation"
++    invoke-virtual {v1, p1}, Ljava/lang/String;->equalsIgnoreCase(Ljava/lang/String;)Z
++    move-result v2
++    if-nez v2, :projection
++    const-string v1, "map"
++    invoke-virtual {v1, p1}, Ljava/lang/String;->equalsIgnoreCase(Ljava/lang/String;)Z
++    move-result v2
++    if-nez v2, :projection
++    const-string v1, "navi"
++    invoke-virtual {v1, p1}, Ljava/lang/String;->equalsIgnoreCase(Ljava/lang/String;)Z
++    move-result v2
++    if-nez v2, :projection
++    const-string v1, "music"
++    invoke-virtual {v1, p1}, Ljava/lang/String;->equalsIgnoreCase(Ljava/lang/String;)Z
++    move-result v2
++    if-eqz v2, :lookup
++    new-instance v1, Lcom/chinatsp/launcher/bean/BeanApp;
++    invoke-direct {v1}, Lcom/chinatsp/launcher/bean/BeanApp;-><init>()V
++    const-string v2, "com.chinatsp.music"
++    invoke-virtual {v1, v2}, Lcom/chinatsp/launcher/bean/BeanApp;->setPkg(Ljava/lang/String;)V
++    goto :launch
++    :lookup
++    invoke-static {v0, p1}, Lcom/chinatsp/launcher/MainAct;->access$300(Lcom/chinatsp/launcher/MainAct;Ljava/lang/String;)Lcom/chinatsp/launcher/bean/BeanApp;
+     move-result-object v1
+-
+-    new-array v0, v0, [Ljava/lang/Object;
+-
+-    .line 396
+-    invoke-static {}, Lcom/chinatsp/launcher/MainAct;->access$200()Ljava/lang/String;
+-
+-    move-result-object v2
+-
+-    aput-object v2, v0, v3
+-
+-    new-instance v2, Ljava/lang/StringBuilder;
+-
+-    invoke-direct {v2}, Ljava/lang/StringBuilder;-><init>()V
+-
+-    const-string v3, "into startApp beanApp:"
+-
+-    invoke-virtual {v2, v3}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+-
+-    move-result-object v2
+-
+-    invoke-virtual {v2, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/Object;)Ljava/lang/StringBuilder;
+-
+-    move-result-object v2
+-
+-    invoke-virtual {v2}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+-
+-    move-result-object v2
+-
+-    aput-object v2, v0, v4
+-
+-    invoke-static {v0}, Lcom/chinatsp/launcher/log/Xlog;->d([Ljava/lang/Object;)V
+-
+-    const-string v0, "music"
+-
+-    .line 398
+-    invoke-virtual {v0, p1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+-
+-    move-result p1
+-
+-    if-eqz p1, :cond_1
+-
+-    .line 399
+-    iget-object p1, p0, Lcom/chinatsp/launcher/MainAct$MyVoiceManagerCallback;->this$0:Lcom/chinatsp/launcher/MainAct;
+-
+-    invoke-virtual {p1}, Lcom/chinatsp/launcher/MainAct;->getContentResolver()Landroid/content/ContentResolver;
+-
+-    move-result-object p1
+-
+-    const-string v0, "eryanet.connection.state"
+-
+-    invoke-static {p1, v0}, Landroid/provider/Settings$Secure;->getString(Landroid/content/ContentResolver;Ljava/lang/String;)Ljava/lang/String;
+-
+-    move-result-object p1
+-
+-    const-string v0, "1"
+-
+-    invoke-virtual {v0, p1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+-
+-    move-result p1
+-
+-    if-eqz p1, :cond_0
+-
+-    .line 400
+-    new-instance v1, Lcom/chinatsp/launcher/bean/BeanApp;
+-
+-    invoke-direct {v1}, Lcom/chinatsp/launcher/bean/BeanApp;-><init>()V
+-
+-    const-string p1, "com.eryanet.vlink"
+-
+-    .line 401
+-    invoke-virtual {v1, p1}, Lcom/chinatsp/launcher/bean/BeanApp;->setPkg(Ljava/lang/String;)V
+-
+-    const-string p1, "spotify"
+-
+-    .line 402
+-    invoke-virtual {v1, p1}, Lcom/chinatsp/launcher/bean/BeanApp;->setExtraName(Ljava/lang/String;)V
+-
+-    goto :goto_0
+-
+-    .line 405
+-    :cond_0
+-    new-instance v1, Lcom/chinatsp/launcher/bean/BeanApp;
+-
+-    invoke-direct {v1}, Lcom/chinatsp/launcher/bean/BeanApp;-><init>()V
+-
+-    const-string p1, "com.chinatsp.music"
+-
+-    .line 406
+-    invoke-virtual {v1, p1}, Lcom/chinatsp/launcher/bean/BeanApp;->setPkg(Ljava/lang/String;)V
+-
+-    :cond_1
+-    :goto_0
+-    if-eqz v1, :cond_2
+-
+-    const-string p1, "speech"
+-
+-    .line 410
+-    invoke-virtual {v1, p1}, Lcom/chinatsp/launcher/bean/BeanApp;->setOpenFrom(Ljava/lang/String;)V
+-
+-    .line 411
+-    iget-object p1, p0, Lcom/chinatsp/launcher/MainAct$MyVoiceManagerCallback;->this$0:Lcom/chinatsp/launcher/MainAct;
+-
+-    invoke-static {p1, v1}, Lcom/chinatsp/launcher/utils/UtilsPkg;->startApk(Landroid/content/Context;Lcom/chinatsp/launcher/bean/BeanApp;)V
+-
+-    :cond_2
++    if-eqz v1, :done
++    :launch
++    const-string v2, "speech"
++    invoke-virtual {v1, v2}, Lcom/chinatsp/launcher/bean/BeanApp;->setOpenFrom(Ljava/lang/String;)V
++    invoke-static {v0, v1}, Lcom/chinatsp/launcher/utils/UtilsPkg;->startApk(Landroid/content/Context;Lcom/chinatsp/launcher/bean/BeanApp;)V
++    return-void
++    :projection
++    invoke-static {v0}, Lcom/chinatsp/launcher/utils/UtilsPkg;->launchOpenHeadunit(Landroid/content/Context;)V
++    :done
+     return-void
+ .end method
+ 
+--- a/smali/com/chinatsp/launcher/MainAct.smali
++++ b/smali/com/chinatsp/launcher/MainAct.smali
+@@ -1026,7 +1026,7 @@
+ 
+     invoke-static {p1}, Lcom/chinatsp/launcher/log/Xlog;->d([Ljava/lang/Object;)V
+ 
+-    const-string p1, "com.eryanet.vlink"
++    const-string p1, "com.andrerinas.headunitrevived"
+ 
+     return-object p1
+ .end method
+--- a/smali/com/chinatsp/launcher/bean/BeanApp.smali
++++ b/smali/com/chinatsp/launcher/bean/BeanApp.smali
+@@ -343,106 +343,12 @@
+     .line 204
+     iget-object v1, p0, Lcom/chinatsp/launcher/room/RmBeanApp;->pkg:Ljava/lang/String;
+ 
+-    const-string v2, "com.eryanet.vlink"
+-
+-    invoke-virtual {v1, v2}, Ljava/lang/String;->contains(Ljava/lang/CharSequence;)Z
+-
++
++    invoke-static {v1}, Lcom/chinatsp/launcher/utils/UtilsPkg;->isRetiredPackage(Ljava/lang/String;)Z
+     move-result v1
+-
+     if-eqz v1, :cond_1
+-
+-    .line 205
+-    iget-object v1, p0, Lcom/chinatsp/launcher/room/RmBeanApp;->pkg:Ljava/lang/String;
+-
+-    const-string v2, ","
+-
+-    invoke-virtual {v1, v2}, Ljava/lang/String;->contains(Ljava/lang/CharSequence;)Z
+-
+-    move-result v1
+-
+-    if-eqz v1, :cond_0
+-
+-    .line 206
+-    iget-object v1, p0, Lcom/chinatsp/launcher/room/RmBeanApp;->pkg:Ljava/lang/String;
+-
+-    iget-object v3, p0, Lcom/chinatsp/launcher/room/RmBeanApp;->pkg:Ljava/lang/String;
+-
+-    invoke-virtual {v3, v2}, Ljava/lang/String;->indexOf(Ljava/lang/String;)I
+-
+-    move-result v3
+-
+-    const/4 v4, 0x0
+-
+-    invoke-virtual {v1, v4, v3}, Ljava/lang/String;->substring(II)Ljava/lang/String;
+-
+-    move-result-object v1
+-
+-    .line 207
+-    iget-object v3, p0, Lcom/chinatsp/launcher/room/RmBeanApp;->pkg:Ljava/lang/String;
+-
+-    iget-object v5, p0, Lcom/chinatsp/launcher/room/RmBeanApp;->pkg:Ljava/lang/String;
+-
+-    invoke-virtual {v5, v2}, Ljava/lang/String;->indexOf(Ljava/lang/String;)I
+-
+-    move-result v2
+-
+-    const/4 v5, 0x1
+-
+-    add-int/2addr v2, v5
+-
+-    invoke-virtual {v3, v2}, Ljava/lang/String;->substring(I)Ljava/lang/String;
+-
+-    move-result-object v2
+-
+-    new-array v3, v5, [Ljava/lang/Object;
+-
+-    .line 208
+-    new-instance v5, Ljava/lang/StringBuilder;
+-
+-    invoke-direct {v5}, Ljava/lang/StringBuilder;-><init>()V
+-
+-    const-string v6, "toBeanApp newPkg:"
+-
+-    invoke-virtual {v5, v6}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+-
+-    move-result-object v5
+-
+-    invoke-virtual {v5, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+-
+-    move-result-object v5
+-
+-    const-string v6, ",extraName:"
+-
+-    invoke-virtual {v5, v6}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+-
+-    move-result-object v5
+-
+-    invoke-virtual {v5, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+-
+-    move-result-object v5
+-
+-    invoke-virtual {v5}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+-
+-    move-result-object v5
+-
+-    aput-object v5, v3, v4
+-
+-    invoke-static {v3}, Lcom/chinatsp/launcher/log/Xlog;->logs([Ljava/lang/Object;)V
+-
+-    .line 209
+-    iput-object v1, v0, Lcom/chinatsp/launcher/bean/BeanApp;->pkg:Ljava/lang/String;
+-
+-    .line 210
+-    iput-object v2, v0, Lcom/chinatsp/launcher/bean/BeanApp;->extraName:Ljava/lang/String;
+-
+-    goto :goto_0
+-
+-    :cond_0
+-    const/4 p0, 0x0
+-
+-    return-object p0
+-
+-    .line 215
++    const/4 v0, 0x0
++    return-object v0
+     :cond_1
+     iget-object v1, p0, Lcom/chinatsp/launcher/room/RmBeanApp;->pkg:Ljava/lang/String;
+ 
+@@ -493,47 +399,6 @@
+     .line 187
+     iget-object v1, p0, Lcom/chinatsp/launcher/bean/BeanApp;->pkg:Ljava/lang/String;
+ 
+-    const-string v2, "com.eryanet.vlink"
+-
+-    invoke-virtual {v1, v2}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+-
+-    move-result v1
+-
+-    if-eqz v1, :cond_0
+-
+-    .line 188
+-    new-instance v1, Ljava/lang/StringBuilder;
+-
+-    invoke-direct {v1}, Ljava/lang/StringBuilder;-><init>()V
+-
+-    iget-object v2, p0, Lcom/chinatsp/launcher/bean/BeanApp;->pkg:Ljava/lang/String;
+-
+-    invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+-
+-    move-result-object v1
+-
+-    const-string v2, ","
+-
+-    invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+-
+-    move-result-object v1
+-
+-    iget-object v2, p0, Lcom/chinatsp/launcher/bean/BeanApp;->extraName:Ljava/lang/String;
+-
+-    invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+-
+-    move-result-object v1
+-
+-    invoke-virtual {v1}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+-
+-    move-result-object v1
+-
+-    iput-object v1, v0, Lcom/chinatsp/launcher/room/RmBeanApp;->pkg:Ljava/lang/String;
+-
+-    goto :goto_0
+-
+-    .line 190
+-    :cond_0
+     iget-object v1, p0, Lcom/chinatsp/launcher/bean/BeanApp;->pkg:Ljava/lang/String;
+ 
+     iput-object v1, v0, Lcom/chinatsp/launcher/room/RmBeanApp;->pkg:Ljava/lang/String;
+--- a/smali/com/chinatsp/launcher/receiver/ReceiverEr.smali
++++ b/smali/com/chinatsp/launcher/receiver/ReceiverEr.smali
+@@ -1,188 +0,0 @@
+-.class public Lcom/chinatsp/launcher/receiver/ReceiverEr;
+-.super Landroid/content/BroadcastReceiver;
+-.source "ReceiverEr.java"
+-
+-
+-# static fields
+-.field public static final BROADCAST_MIRROR_IN:Ljava/lang/String; = "com.eryanet.link.connected"
+-
+-.field public static final BROADCAST_MIRROR_OUT:Ljava/lang/String; = "com.eryanet.link.disconnected"
+-
+-.field public static final SETTINGS_ERYANET_CONNECTED_DEVICE_NAME:Ljava/lang/String; = "eryanet.connected.device.name"
+-
+-.field public static final SETTINGS_ERYANET_CONNECTION_STATE:Ljava/lang/String; = "eryanet.connection.state"
+-
+-
+-# direct methods
+-.method public constructor <init>()V
+-    .locals 0
+-
+-    .line 18
+-    invoke-direct {p0}, Landroid/content/BroadcastReceiver;-><init>()V
+-
+-    return-void
+-.end method
+-
+-
+-# virtual methods
+-.method public isNetWorkAction(Landroid/content/Context;Landroid/content/Intent;)Z
+-    .locals 6
+-
+-    .line 27
+-    invoke-virtual {p2}, Landroid/content/Intent;->getAction()Ljava/lang/String;
+-
+-    move-result-object v0
+-
+-    const/4 v1, 0x0
+-
+-    const/4 v2, 0x1
+-
+-    :try_start_0
+-    const-string v3, "deviceName"
+-
+-    .line 31
+-    invoke-virtual {p2, v3}, Landroid/content/Intent;->getStringExtra(Ljava/lang/String;)Ljava/lang/String;
+-
+-    move-result-object p2
+-
+-    const/4 v3, 0x3
+-
+-    new-array v3, v3, [Ljava/lang/Object;
+-
+-    aput-object p2, v3, v1
+-
+-    .line 32
+-    invoke-virtual {p1}, Landroid/content/Context;->getContentResolver()Landroid/content/ContentResolver;
+-
+-    move-result-object p2
+-
+-    const-string v4, "eryanet.connection.state"
+-
+-    invoke-static {p2, v4}, Landroid/provider/Settings$Secure;->getString(Landroid/content/ContentResolver;Ljava/lang/String;)Ljava/lang/String;
+-
+-    move-result-object p2
+-
+-    aput-object p2, v3, v2
+-
+-    const/4 p2, 0x2
+-
+-    .line 33
+-    invoke-virtual {p1}, Landroid/content/Context;->getContentResolver()Landroid/content/ContentResolver;
+-
+-    move-result-object v4
+-
+-    const-string v5, "eryanet.connected.device.name"
+-
+-    invoke-static {v4, v5}, Landroid/provider/Settings$Secure;->getString(Landroid/content/ContentResolver;Ljava/lang/String;)Ljava/lang/String;
+-
+-    move-result-object v4
+-
+-    aput-object v4, v3, p2
+-
+-    .line 32
+-    invoke-static {v3}, Lcom/chinatsp/launcher/log/Xlog;->logs([Ljava/lang/Object;)V
+-    :try_end_0
+-    .catch Ljava/lang/Exception; {:try_start_0 .. :try_end_0} :catch_0
+-
+-    goto :goto_0
+-
+-    :catch_0
+-    move-exception p2
+-
+-    .line 36
+-    invoke-virtual {p2}, Ljava/lang/Exception;->printStackTrace()V
+-
+-    new-array p2, v2, [Ljava/lang/Object;
+-
+-    const-string v3, "error"
+-
+-    aput-object v3, p2, v1
+-
+-    .line 37
+-    invoke-static {p2}, Lcom/chinatsp/launcher/log/Xlog;->logs([Ljava/lang/Object;)V
+-
+-    :goto_0
+-    const-string p2, "com.eryanet.link.connected"
+-
+-    .line 40
+-    invoke-virtual {v0, p2}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+-
+-    move-result p2
+-
+-    if-eqz p2, :cond_0
+-
+-    .line 41
+-    invoke-static {}, Lcom/chinatsp/launcher/BaseValue;->getInstance()Lcom/chinatsp/launcher/BaseValue;
+-
+-    move-result-object p2
+-
+-    invoke-virtual {p1}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
+-
+-    move-result-object p1
+-
+-    const v0, 0x7f0f008a
+-
+-    invoke-virtual {p1, v0}, Landroid/content/res/Resources;->getString(I)Ljava/lang/String;
+-
+-    move-result-object p1
+-
+-    invoke-virtual {p2, p1}, Lcom/chinatsp/launcher/BaseValue;->navigationConnectStatus(Ljava/lang/String;)V
+-
+-    return v2
+-
+-    :cond_0
+-    const-string p2, "com.eryanet.link.disconnected"
+-
+-    .line 43
+-    invoke-virtual {v0, p2}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+-
+-    move-result p2
+-
+-    if-eqz p2, :cond_1
+-
+-    .line 44
+-    invoke-static {}, Lcom/chinatsp/launcher/BaseValue;->getInstance()Lcom/chinatsp/launcher/BaseValue;
+-
+-    move-result-object p2
+-
+-    invoke-virtual {p1}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
+-
+-    move-result-object p1
+-
+-    const v0, 0x7f0f008b
+-
+-    invoke-virtual {p1, v0}, Landroid/content/res/Resources;->getString(I)Ljava/lang/String;
+-
+-    move-result-object p1
+-
+-    invoke-virtual {p2, p1}, Lcom/chinatsp/launcher/BaseValue;->navigationConnectStatus(Ljava/lang/String;)V
+-
+-    return v2
+-
+-    :cond_1
+-    return v1
+-.end method
+-
+-.method public onReceive(Landroid/content/Context;Landroid/content/Intent;)V
+-    .locals 3
+-
+-    const/4 v0, 0x1
+-
+-    new-array v0, v0, [Ljava/lang/Object;
+-
+-    .line 22
+-    invoke-virtual {p2}, Landroid/content/Intent;->getAction()Ljava/lang/String;
+-
+-    move-result-object v1
+-
+-    const/4 v2, 0x0
+-
+-    aput-object v1, v0, v2
+-
+-    invoke-static {v0}, Lcom/chinatsp/launcher/log/Xlog;->logs([Ljava/lang/Object;)V
+-
+-    .line 23
+-    invoke-virtual {p0, p1, p2}, Lcom/chinatsp/launcher/receiver/ReceiverEr;->isNetWorkAction(Landroid/content/Context;Landroid/content/Intent;)Z
+-
+-    return-void
+-.end method
+--- a/smali/com/chinatsp/launcher/ui/HomeFrg.smali
++++ b/smali/com/chinatsp/launcher/ui/HomeFrg.smali
+@@ -137,7 +137,6 @@
+ .method init()V
+     .locals 11
+ 
+-    const-string v0, "eryanet.connection.state"
+ 
+     .line 39
+     iget-object v1, p0, Lcom/chinatsp/launcher/ui/HomeFrg;->bind:Landroidx/viewbinding/ViewBinding;
+@@ -462,142 +461,6 @@
+     invoke-virtual {v2, v1}, Lcom/chinatsp/view/RemoteRadioView;->refreshResource(Z)V
+ 
+     :cond_6
+-    :try_start_1
+-    new-array v1, v7, [Ljava/lang/Object;
+-
+-    const-string v2, "autoCar111"
+-
+-    aput-object v2, v1, v3
+-
+-    .line 113
+-    invoke-virtual {p0}, Lcom/chinatsp/launcher/ui/HomeFrg;->getActivity()Landroidx/fragment/app/FragmentActivity;
+-
+-    move-result-object v2
+-
+-    invoke-virtual {v2}, Landroidx/fragment/app/FragmentActivity;->getContentResolver()Landroid/content/ContentResolver;
+-
+-    move-result-object v2
+-
+-    invoke-static {v2, v0}, Landroid/provider/Settings$Secure;->getString(Landroid/content/ContentResolver;Ljava/lang/String;)Ljava/lang/String;
+-
+-    move-result-object v2
+-
+-    aput-object v2, v1, v5
+-
+-    invoke-static {v1}, Lcom/chinatsp/launcher/log/Xlog;->logs([Ljava/lang/Object;)V
+-
+-    new-array v1, v7, [Ljava/lang/Object;
+-
+-    const-string v2, "autoCar"
+-
+-    aput-object v2, v1, v3
+-
+-    .line 114
+-    invoke-virtual {p0}, Lcom/chinatsp/launcher/ui/HomeFrg;->getActivity()Landroidx/fragment/app/FragmentActivity;
+-
+-    move-result-object v2
+-
+-    invoke-virtual {v2}, Landroidx/fragment/app/FragmentActivity;->getContentResolver()Landroid/content/ContentResolver;
+-
+-    move-result-object v2
+-
+-    const-string v4, "eryanet.connected.device.name"
+-
+-    invoke-static {v2, v4}, Landroid/provider/Settings$Secure;->getString(Landroid/content/ContentResolver;Ljava/lang/String;)Ljava/lang/String;
+-
+-    move-result-object v2
+-
+-    aput-object v2, v1, v5
+-
+-    invoke-static {v1}, Lcom/chinatsp/launcher/log/Xlog;->logs([Ljava/lang/Object;)V
+-    :try_end_1
+-    .catch Ljava/lang/Exception; {:try_start_1 .. :try_end_1} :catch_1
+-
+-    goto :goto_2
+-
+-    :catch_1
+-    move-exception v1
+-
+-    .line 116
+-    invoke-virtual {v1}, Ljava/lang/Exception;->printStackTrace()V
+-
+-    new-array v1, v5, [Ljava/lang/Object;
+-
+-    const-string v2, "error"
+-
+-    aput-object v2, v1, v3
+-
+-    .line 117
+-    invoke-static {v1}, Lcom/chinatsp/launcher/log/Xlog;->logs([Ljava/lang/Object;)V
+-
+-    .line 120
+-    :goto_2
+-    invoke-virtual {p0}, Lcom/chinatsp/launcher/ui/HomeFrg;->getActivity()Landroidx/fragment/app/FragmentActivity;
+-
+-    move-result-object v1
+-
+-    invoke-virtual {v1}, Landroidx/fragment/app/FragmentActivity;->getContentResolver()Landroid/content/ContentResolver;
+-
+-    move-result-object v1
+-
+-    invoke-static {v1, v0}, Landroid/provider/Settings$Secure;->getString(Landroid/content/ContentResolver;Ljava/lang/String;)Ljava/lang/String;
+-
+-    move-result-object v0
+-
+-    const-string v1, "1"
+-
+-    invoke-virtual {v1, v0}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+-
+-    move-result v0
+-
+-    if-eqz v0, :cond_7
+-
+-    .line 121
+-    invoke-static {}, Lcom/chinatsp/launcher/BaseValue;->getInstance()Lcom/chinatsp/launcher/BaseValue;
+-
+-    move-result-object v0
+-
+-    invoke-virtual {p0}, Lcom/chinatsp/launcher/ui/HomeFrg;->getActivity()Landroidx/fragment/app/FragmentActivity;
+-
+-    move-result-object v1
+-
+-    invoke-virtual {v1}, Landroidx/fragment/app/FragmentActivity;->getResources()Landroid/content/res/Resources;
+-
+-    move-result-object v1
+-
+-    const v2, 0x7f0f008a
+-
+-    invoke-virtual {v1, v2}, Landroid/content/res/Resources;->getString(I)Ljava/lang/String;
+-
+-    move-result-object v1
+-
+-    invoke-virtual {v0, v1}, Lcom/chinatsp/launcher/BaseValue;->navigationConnectStatus(Ljava/lang/String;)V
+-
+-    goto :goto_3
+-
+-    .line 123
+-    :cond_7
+-    invoke-static {}, Lcom/chinatsp/launcher/BaseValue;->getInstance()Lcom/chinatsp/launcher/BaseValue;
+-
+-    move-result-object v0
+-
+-    invoke-virtual {p0}, Lcom/chinatsp/launcher/ui/HomeFrg;->getActivity()Landroidx/fragment/app/FragmentActivity;
+-
+-    move-result-object v1
+-
+-    invoke-virtual {v1}, Landroidx/fragment/app/FragmentActivity;->getResources()Landroid/content/res/Resources;
+-
+-    move-result-object v1
+-
+-    const v2, 0x7f0f008b
+-
+-    invoke-virtual {v1, v2}, Landroid/content/res/Resources;->getString(I)Ljava/lang/String;
+-
+-    move-result-object v1
+-
+-    invoke-virtual {v0, v1}, Lcom/chinatsp/launcher/BaseValue;->navigationConnectStatus(Ljava/lang/String;)V
+-
+-    :goto_3
+     return-void
+ .end method
+ 
+--- a/smali/com/chinatsp/launcher/utils/UtilsPkg.smali
++++ b/smali/com/chinatsp/launcher/utils/UtilsPkg.smali
+@@ -542,153 +542,6 @@
+ 
+     .line 106
+     :cond_4
+-    invoke-virtual {p1}, Lcom/chinatsp/launcher/bean/BeanApp;->getPkg()Ljava/lang/String;
+-
+-    move-result-object v0
+-
+-    const-string v2, "com.eryanet.vlink"
+-
+-    invoke-virtual {v0, v2}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+-
+-    move-result v0
+-
+-    if-eqz v0, :cond_9
+-
+-    .line 107
+-    invoke-virtual {p1}, Lcom/chinatsp/launcher/bean/BeanApp;->getExtraName()Ljava/lang/String;
+-
+-    move-result-object v0
+-
+-    const-string v2, "navi"
+-
+-    invoke-virtual {v2, v0}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+-
+-    move-result v0
+-
+-    if-eqz v0, :cond_5
+-
+-    .line 108
+-    invoke-virtual {p0}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
+-
+-    move-result-object p0
+-
+-    const p1, 0x7f070068
+-
+-    invoke-virtual {p0, p1, v1}, Landroid/content/res/Resources;->getDrawable(ILandroid/content/res/Resources$Theme;)Landroid/graphics/drawable/Drawable;
+-
+-    move-result-object p0
+-
+-    return-object p0
+-
+-    .line 109
+-    :cond_5
+-    invoke-virtual {p1}, Lcom/chinatsp/launcher/bean/BeanApp;->getExtraName()Ljava/lang/String;
+-
+-    move-result-object v0
+-
+-    const-string v2, "spotify"
+-
+-    invoke-virtual {v2, v0}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+-
+-    move-result v0
+-
+-    if-eqz v0, :cond_6
+-
+-    .line 110
+-    invoke-virtual {p0}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
+-
+-    move-result-object p0
+-
+-    const p1, 0x7f07006b
+-
+-    invoke-virtual {p0, p1, v1}, Landroid/content/res/Resources;->getDrawable(ILandroid/content/res/Resources$Theme;)Landroid/graphics/drawable/Drawable;
+-
+-    move-result-object p0
+-
+-    return-object p0
+-
+-    .line 111
+-    :cond_6
+-    invoke-virtual {p1}, Lcom/chinatsp/launcher/bean/BeanApp;->getExtraName()Ljava/lang/String;
+-
+-    move-result-object v0
+-
+-    const-string/jumbo v2, "youtube"
+-
+-    invoke-virtual {v2, v0}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+-
+-    move-result v0
+-
+-    if-eqz v0, :cond_7
+-
+-    .line 112
+-    invoke-virtual {p0}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
+-
+-    move-result-object p0
+-
+-    const p1, 0x7f07006f
+-
+-    invoke-virtual {p0, p1, v1}, Landroid/content/res/Resources;->getDrawable(ILandroid/content/res/Resources$Theme;)Landroid/graphics/drawable/Drawable;
+-
+-    move-result-object p0
+-
+-    return-object p0
+-
+-    .line 113
+-    :cond_7
+-    invoke-virtual {p1}, Lcom/chinatsp/launcher/bean/BeanApp;->getExtraName()Ljava/lang/String;
+-
+-    move-result-object v0
+-
+-    const-string v2, "weather"
+-
+-    invoke-virtual {v2, v0}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+-
+-    move-result v0
+-
+-    if-eqz v0, :cond_8
+-
+-    .line 114
+-    invoke-virtual {p0}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
+-
+-    move-result-object p0
+-
+-    const p1, 0x7f07006e
+-
+-    invoke-virtual {p0, p1, v1}, Landroid/content/res/Resources;->getDrawable(ILandroid/content/res/Resources$Theme;)Landroid/graphics/drawable/Drawable;
+-
+-    move-result-object p0
+-
+-    return-object p0
+-
+-    .line 115
+-    :cond_8
+-    invoke-virtual {p1}, Lcom/chinatsp/launcher/bean/BeanApp;->getExtraName()Ljava/lang/String;
+-
+-    move-result-object p1
+-
+-    const-string v0, "mirror"
+-
+-    invoke-virtual {v0, p1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+-
+-    move-result p1
+-
+-    if-eqz p1, :cond_9
+-
+-    .line 116
+-    invoke-virtual {p0}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
+-
+-    move-result-object p0
+-
+-    const p1, 0x7f070069
+-
+-    invoke-virtual {p0, p1, v1}, Landroid/content/res/Resources;->getDrawable(ILandroid/content/res/Resources$Theme;)Landroid/graphics/drawable/Drawable;
+-
+-    move-result-object p0
+-
+-    return-object p0
+-
+-    :cond_9
+     return-object v1
+ .end method
+ 
+@@ -1105,276 +958,101 @@
+ .end method
+ 
+ .method public static startApk(Landroid/content/Context;Lcom/chinatsp/launcher/bean/BeanApp;)V
+-    .locals 7
+-
+-    const-string v0, "openFrom"
+-
+-    const/4 v1, 0x0
+-
+-    .line 176
+-    sput-boolean v1, Lcom/chinatsp/launcher/utils/UtilsPkg;->sIsMirrorOpen:Z
+-
+-    if-nez p1, :cond_0
+-
++    .locals 4
++    const/4 v0, 0x0
++    sput-boolean v0, Lcom/chinatsp/launcher/utils/UtilsPkg;->sIsMirrorOpen:Z
++    if-eqz p1, :done
++    invoke-virtual {p1}, Lcom/chinatsp/launcher/bean/BeanApp;->getPkg()Ljava/lang/String;
++    move-result-object v0
++    invoke-static {v0}, Lcom/chinatsp/launcher/utils/UtilsPkg;->isRetiredPackage(Ljava/lang/String;)Z
++    move-result v1
++    if-nez v1, :done
++    const-string v1, "com.andrerinas.headunitrevived"
++    invoke-virtual {v1, v0}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
++    move-result v1
++    if-eqz v1, :ordinary
++    invoke-static {p0}, Lcom/chinatsp/launcher/utils/UtilsPkg;->launchOpenHeadunit(Landroid/content/Context;)V
+     return-void
+-
+-    :cond_0
+-    const/4 v2, 0x1
+-
+-    new-array v3, v2, [Ljava/lang/Object;
+-
+-    aput-object p1, v3, v1
+-
+-    .line 178
+-    invoke-static {v3}, Lcom/chinatsp/launcher/log/Xlog;->logs([Ljava/lang/Object;)V
+-
+-    .line 179
++    :ordinary
++    :try_start
+     invoke-virtual {p0}, Landroid/content/Context;->getPackageManager()Landroid/content/pm/PackageManager;
+-
+-    move-result-object v3
+-
+-    invoke-virtual {p1}, Lcom/chinatsp/launcher/bean/BeanApp;->getPkg()Ljava/lang/String;
+-
+-    move-result-object v4
+-
+-    invoke-virtual {v3, v4}, Landroid/content/pm/PackageManager;->getLaunchIntentForPackage(Ljava/lang/String;)Landroid/content/Intent;
+-
+-    move-result-object v3
+-
+-    if-nez v3, :cond_1
+-
+-    .line 181
+-    invoke-virtual {p1}, Lcom/chinatsp/launcher/bean/BeanApp;->getPkg()Ljava/lang/String;
+-
+-    move-result-object v4
+-
+-    const-string v5, "com.chinatsp.ifly"
+-
+-    invoke-virtual {v5, v4}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+-
+-    move-result v4
+-
+-    if-eqz v4, :cond_1
+-
+-    .line 182
+-    new-instance p1, Landroid/content/Intent;
+-
+-    invoke-direct {p1}, Landroid/content/Intent;-><init>()V
+-
+-    const/high16 v0, 0x10000000
+-
+-    .line 183
+-    invoke-virtual {p1, v0}, Landroid/content/Intent;->addFlags(I)Landroid/content/Intent;
+-
+-    .line 184
+-    new-instance v0, Landroid/content/ComponentName;
+-
+-    const-string v1, "com.chinatsp.ifly.SettingsActivity"
+-
+-    invoke-direct {v0, v5, v1}, Landroid/content/ComponentName;-><init>(Ljava/lang/String;Ljava/lang/String;)V
+-
+-    .line 186
+-    invoke-virtual {p1, v0}, Landroid/content/Intent;->setComponent(Landroid/content/ComponentName;)Landroid/content/Intent;
+-
+-    .line 187
+-    invoke-virtual {p0, p1}, Landroid/content/Context;->startActivity(Landroid/content/Intent;)V
+-
++    move-result-object v1
++    invoke-virtual {v1, v0}, Landroid/content/pm/PackageManager;->getLaunchIntentForPackage(Ljava/lang/String;)Landroid/content/Intent;
++    move-result-object v1
++    if-nez v1, :launch
++    const-string v2, "com.chinatsp.ifly"
++    invoke-virtual {v2, v0}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
++    move-result v2
++    if-eqz v2, :done
++    new-instance v1, Landroid/content/Intent;
++    invoke-direct {v1}, Landroid/content/Intent;-><init>()V
++    const-string v2, "com.chinatsp.ifly.SettingsActivity"
++    invoke-virtual {v1, v0, v2}, Landroid/content/Intent;->setClassName(Ljava/lang/String;Ljava/lang/String;)Landroid/content/Intent;
++    :launch
++    const v2, 0x10200000
++    invoke-virtual {v1, v2}, Landroid/content/Intent;->addFlags(I)Landroid/content/Intent;
++    invoke-virtual {p1}, Lcom/chinatsp/launcher/bean/BeanApp;->getOpenFrom()Ljava/lang/String;
++    move-result-object v2
++    if-eqz v2, :start
++    const-string v3, "openFrom"
++    invoke-virtual {v1, v3, v2}, Landroid/content/Intent;->putExtra(Ljava/lang/String;Ljava/lang/String;)Landroid/content/Intent;
++    :start
++    invoke-virtual {p0, v1}, Landroid/content/Context;->startActivity(Landroid/content/Intent;)V
++    :try_end
++    .catch Ljava/lang/RuntimeException; {:try_start .. :try_end} :failed
++    :done
+     return-void
+-
+-    .line 192
+-    :cond_1
+-    :try_start_0
+-    invoke-virtual {v3}, Landroid/content/Intent;->getComponent()Landroid/content/ComponentName;
+-
+-    move-result-object v3
+-
+-    if-nez v3, :cond_2
+-
++    :failed
++    move-exception v0
++    invoke-virtual {v0}, Ljava/lang/RuntimeException;->printStackTrace()V
+     return-void
+-
+-    .line 194
+-    :cond_2
+-    invoke-virtual {v3}, Landroid/content/ComponentName;->getClassName()Ljava/lang/String;
+-
+-    move-result-object v3
+-
+-    if-nez v3, :cond_3
+-
++.end method
++
++
++.method public static isRetiredPackage(Ljava/lang/String;)Z
++    .locals 1
++    if-eqz p0, :no
++    const-string v0, "com.eryanet.vlink"
++    invoke-virtual {v0, p0}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
++    move-result v0
++    if-nez v0, :yes
++    const-string v0, "com.eryanet.vlink,"
++    invoke-virtual {p0, v0}, Ljava/lang/String;->startsWith(Ljava/lang/String;)Z
++    move-result v0
++    return v0
++    :yes
++    const/4 v0, 0x1
++    return v0
++    :no
++    const/4 v0, 0x0
++    return v0
++.end method
++
++.method public static launchOpenHeadunit(Landroid/content/Context;)V
++    .locals 3
++    :try_start
++    new-instance v0, Landroid/content/Intent;
++    const-string v1, "android.intent.action.MAIN"
++    invoke-direct {v0, v1}, Landroid/content/Intent;-><init>(Ljava/lang/String;)V
++    const-string v1, "android.intent.category.LAUNCHER"
++    invoke-virtual {v0, v1}, Landroid/content/Intent;->addCategory(Ljava/lang/String;)Landroid/content/Intent;
++    const-string v1, "com.andrerinas.headunitrevived"
++    const-string v2, "com.andrerinas.openheadunit.main.MainActivity"
++    invoke-virtual {v0, v1, v2}, Landroid/content/Intent;->setClassName(Ljava/lang/String;Ljava/lang/String;)Landroid/content/Intent;
++    const v1, 0x10200000
++    invoke-virtual {v0, v1}, Landroid/content/Intent;->addFlags(I)Landroid/content/Intent;
++    invoke-virtual {p0, v0}, Landroid/content/Context;->startActivity(Landroid/content/Intent;)V
++    :try_end
++    .catch Ljava/lang/RuntimeException; {:try_start .. :try_end} :failed
+     return-void
+-
+-    .line 196
+-    :cond_3
+-    new-instance v4, Landroid/content/ComponentName;
+-
+-    invoke-virtual {p1}, Lcom/chinatsp/launcher/bean/BeanApp;->getPkg()Ljava/lang/String;
+-
+-    move-result-object v5
+-
+-    invoke-direct {v4, v5, v3}, Landroid/content/ComponentName;-><init>(Ljava/lang/String;Ljava/lang/String;)V
+-
+-    .line 199
+-    new-instance v3, Landroid/content/Intent;
+-
+-    invoke-direct {v3}, Landroid/content/Intent;-><init>()V
+-
+-    const-string v5, "android.intent.category.DEFAULT"
+-
+-    .line 200
+-    invoke-virtual {v3, v5}, Landroid/content/Intent;->addCategory(Ljava/lang/String;)Landroid/content/Intent;
+-
+-    move-result-object v3
+-
+-    const/high16 v5, 0x10200000
+-
+-    .line 201
+-    invoke-virtual {v3, v5}, Landroid/content/Intent;->setFlags(I)Landroid/content/Intent;
+-
+-    move-result-object v3
+-
+-    .line 203
+-    invoke-virtual {p1}, Lcom/chinatsp/launcher/bean/BeanApp;->getExtraName()Ljava/lang/String;
+-
+-    move-result-object v5
+-
+-    invoke-static {v5}, Landroid/text/TextUtils;->isEmpty(Ljava/lang/CharSequence;)Z
+-
+-    move-result v5
+-
+-    if-nez v5, :cond_5
+-
+-    new-array v4, v2, [Ljava/lang/Object;
+-
+-    .line 204
+-    new-instance v5, Ljava/lang/StringBuilder;
+-
+-    invoke-direct {v5}, Ljava/lang/StringBuilder;-><init>()V
+-
+-    const-string v6, "into reset className:"
+-
+-    invoke-virtual {v5, v6}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+-
+-    move-result-object v5
+-
+-    invoke-virtual {p1}, Lcom/chinatsp/launcher/bean/BeanApp;->getExtraName()Ljava/lang/String;
+-
+-    move-result-object v6
+-
+-    invoke-virtual {v5, v6}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+-
+-    move-result-object v5
+-
+-    invoke-virtual {v5}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+-
+-    move-result-object v5
+-
+-    aput-object v5, v4, v1
+-
+-    invoke-static {v4}, Lcom/chinatsp/launcher/log/Xlog;->logs([Ljava/lang/Object;)V
+-
+-    const-string v4, "mirror"
+-
+-    .line 205
+-    invoke-virtual {p1}, Lcom/chinatsp/launcher/bean/BeanApp;->getExtraName()Ljava/lang/String;
+-
+-    move-result-object v5
+-
+-    invoke-virtual {v4, v5}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+-
+-    move-result v4
+-
+-    if-eqz v4, :cond_4
+-
+-    .line 206
+-    sput-boolean v2, Lcom/chinatsp/launcher/utils/UtilsPkg;->sIsMirrorOpen:Z
+-
+-    .line 208
+-    :cond_4
+-    new-instance v4, Landroid/content/ComponentName;
+-
+-    invoke-virtual {p1}, Lcom/chinatsp/launcher/bean/BeanApp;->getPkg()Ljava/lang/String;
+-
+-    move-result-object v5
+-
+-    const-string v6, "com.eryanet.vlink.EYLinkFuncActivity"
+-
+-    invoke-direct {v4, v5, v6}, Landroid/content/ComponentName;-><init>(Ljava/lang/String;Ljava/lang/String;)V
+-
+-    const-string v5, "func"
+-
+-    .line 209
+-    invoke-virtual {p1}, Lcom/chinatsp/launcher/bean/BeanApp;->getExtraName()Ljava/lang/String;
+-
+-    move-result-object v6
+-
+-    invoke-virtual {v3, v5, v6}, Landroid/content/Intent;->putExtra(Ljava/lang/String;Ljava/lang/String;)Landroid/content/Intent;
+-
+-    const-string v5, "launcher"
+-
+-    .line 210
+-    invoke-virtual {v3, v0, v5}, Landroid/content/Intent;->putExtra(Ljava/lang/String;Ljava/lang/String;)Landroid/content/Intent;
+-
+-    .line 211
+-    invoke-virtual {p1}, Lcom/chinatsp/launcher/bean/BeanApp;->getOpenFrom()Ljava/lang/String;
+-
+-    move-result-object v5
+-
+-    invoke-static {v5}, Landroid/text/TextUtils;->isEmpty(Ljava/lang/CharSequence;)Z
+-
+-    move-result v5
+-
+-    if-nez v5, :cond_5
+-
+-    .line 212
+-    invoke-virtual {p1}, Lcom/chinatsp/launcher/bean/BeanApp;->getOpenFrom()Ljava/lang/String;
+-
+-    move-result-object p1
+-
+-    invoke-virtual {v3, v0, p1}, Landroid/content/Intent;->putExtra(Ljava/lang/String;Ljava/lang/String;)Landroid/content/Intent;
+-
+-    .line 216
+-    :cond_5
+-    invoke-virtual {v3, v4}, Landroid/content/Intent;->setComponent(Landroid/content/ComponentName;)Landroid/content/Intent;
+-
+-    new-array p1, v2, [Ljava/lang/Object;
+-
+-    .line 217
+-    new-instance v0, Ljava/lang/StringBuilder;
+-
+-    invoke-direct {v0}, Ljava/lang/StringBuilder;-><init>()V
+-
+-    const-string v2, "startApk sIsMirrorOpen:"
+-
+-    invoke-virtual {v0, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+-
+-    move-result-object v0
+-
+-    sget-boolean v2, Lcom/chinatsp/launcher/utils/UtilsPkg;->sIsMirrorOpen:Z
+-
+-    invoke-virtual {v0, v2}, Ljava/lang/StringBuilder;->append(Z)Ljava/lang/StringBuilder;
+-
+-    move-result-object v0
+-
+-    invoke-virtual {v0}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+-
+-    move-result-object v0
+-
+-    aput-object v0, p1, v1
+-
+-    invoke-static {p1}, Lcom/chinatsp/launcher/log/Xlog;->logs([Ljava/lang/Object;)V
+-
+-    .line 218
+-    invoke-virtual {p0, v3}, Landroid/content/Context;->startActivity(Landroid/content/Intent;)V
+-    :try_end_0
+-    .catch Ljava/lang/Exception; {:try_start_0 .. :try_end_0} :catch_0
+-
+-    goto :goto_0
+-
+-    :catch_0
+-    move-exception p0
+-
+-    .line 220
+-    invoke-virtual {p0}, Ljava/lang/Exception;->printStackTrace()V
+-
+-    :goto_0
++    :failed
++    move-exception v0
++    const-string v1, "OpenHeadunitLauncher"
++    const-string v2, "Unable to open Open Headunit"
++    invoke-static {v1, v2, v0}, Landroid/util/Log;->e(Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;)I
++    const/4 v0, 0x0
++    invoke-static {p0, v2, v0}, Landroid/widget/Toast;->makeText(Landroid/content/Context;Ljava/lang/CharSequence;I)Landroid/widget/Toast;
++    move-result-object v0
++    invoke-virtual {v0}, Landroid/widget/Toast;->show()V
+     return-void
+ .end method
+--- a/smali/com/chinatsp/launcher/view/NavigationLayout.smali
++++ b/smali/com/chinatsp/launcher/view/NavigationLayout.smali
+@@ -7,9 +7,9 @@
+ 
+ 
+ # static fields
+-.field public static final clsName:Ljava/lang/String; = "com.eryanet.vlink.ConnectActivity"
++.field public static final clsName:Ljava/lang/String; = "com.andrerinas.openheadunit.main.MainActivity"
+ 
+-.field public static final pkg:Ljava/lang/String; = "com.eryanet.vlink"
++.field public static final pkg:Ljava/lang/String; = "com.andrerinas.headunitrevived"
+ 
+ 
+ # instance fields
+@@ -134,15 +134,7 @@
+ .end method
+ 
+ .method public navigationConnectStatus(Ljava/lang/String;)V
+-    .locals 1
+-
+-    .line 55
+-    invoke-virtual {p0}, Lcom/chinatsp/launcher/view/NavigationLayout;->getTvConnect()Landroid/widget/TextView;
+-
+-    move-result-object v0
+-
+-    invoke-virtual {v0, p1}, Landroid/widget/TextView;->setText(Ljava/lang/CharSequence;)V
+-
++    .locals 0
+     return-void
+ .end method
+ 
+--- a/smali/com/chinatsp/launcher/voice/VoiceManager.smali
++++ b/smali/com/chinatsp/launcher/voice/VoiceManager.smali
+@@ -371,96 +371,13 @@
+ 
+     const-string v11, "speech"
+ 
+-    const-string v12, "com.eryanet.vlink"
++    const-string v12, "com.andrerinas.headunitrevived"
+ 
+     if-eqz v8, :cond_5
+-
+-    new-array v0, v5, [Ljava/lang/Object;
+-
+-    aput-object v7, v0, v4
+-
+-    .line 106
+-    new-instance v3, Ljava/lang/StringBuilder;
+-
+-    invoke-direct {v3}, Ljava/lang/StringBuilder;-><init>()V
+-
+-    const-string v4, "dealSrAction nlpVoiceModel MUSIC:"
+-
+-    invoke-virtual {v3, v4}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+-
+-    move-result-object v3
+-
+-    iget-object v4, p0, Lcom/chinatsp/launcher/voice/VoiceManager;->mContext:Landroid/content/Context;
+-
+-    .line 107
+-    invoke-virtual {v4}, Landroid/content/Context;->getContentResolver()Landroid/content/ContentResolver;
+-
+-    move-result-object v4
+-
+-    const-string v5, "eryanet.connection.state"
+-
+-    invoke-static {v4, v5}, Landroid/provider/Settings$Secure;->getString(Landroid/content/ContentResolver;Ljava/lang/String;)Ljava/lang/String;
+-
+-    move-result-object v4
+-
+-    invoke-virtual {v3, v4}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+-
+-    move-result-object v3
+-
+-    invoke-virtual {v3}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+-
+-    move-result-object v3
+-
+-    aput-object v3, v0, v2
+-
+-    .line 106
+-    invoke-static {v0}, Lcom/chinatsp/launcher/log/Xlog;->d([Ljava/lang/Object;)V
+-
+-    .line 108
+     iget-object p1, p1, Lcom/chinatsp/ifly/aidlbean/NlpVoiceModel;->semantic:Ljava/lang/String;
+-
+     invoke-virtual {v10, p1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+-
+     move-result p1
+-
+     if-eqz p1, :cond_9
+-
+-    .line 109
+-    iget-object p1, p0, Lcom/chinatsp/launcher/voice/VoiceManager;->mContext:Landroid/content/Context;
+-
+-    invoke-virtual {p1}, Landroid/content/Context;->getContentResolver()Landroid/content/ContentResolver;
+-
+-    move-result-object p1
+-
+-    invoke-static {p1, v5}, Landroid/provider/Settings$Secure;->getString(Landroid/content/ContentResolver;Ljava/lang/String;)Ljava/lang/String;
+-
+-    move-result-object p1
+-
+-    const-string v0, "1"
+-
+-    invoke-virtual {v0, p1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+-
+-    move-result p1
+-
+-    if-eqz p1, :cond_4
+-
+-    .line 110
+-    new-instance v6, Lcom/chinatsp/launcher/bean/BeanApp;
+-
+-    invoke-direct {v6}, Lcom/chinatsp/launcher/bean/BeanApp;-><init>()V
+-
+-    .line 111
+-    invoke-virtual {v6, v12}, Lcom/chinatsp/launcher/bean/BeanApp;->setPkg(Ljava/lang/String;)V
+-
+-    .line 112
+-    invoke-virtual {v6, v9}, Lcom/chinatsp/launcher/bean/BeanApp;->setExtraName(Ljava/lang/String;)V
+-
+-    .line 113
+-    invoke-virtual {v6, v11}, Lcom/chinatsp/launcher/bean/BeanApp;->setOpenFrom(Ljava/lang/String;)V
+-
+-    goto/16 :goto_0
+-
+-    .line 116
+     :cond_4
+     new-instance v6, Lcom/chinatsp/launcher/bean/BeanApp;
+ 

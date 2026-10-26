@@ -46,6 +46,10 @@ class FakeADB(tool.ADB):
         self.fail_after_effect = False
         self.on_write = None
         self.persist_layout = True
+        self.launcher_updated = False
+        self.launcher_uid = 1000
+        self.launcher_version = 20240726
+        self.launcher_home = tool.PROFILE["launcher"]["home"]
 
     def xml(self):
         item = "" if self.layout is None else f'<int name="{tool.RECEIVER}" value="{self.layout}" />'
@@ -66,6 +70,14 @@ class FakeADB(tool.ADB):
         if args == ("devices", "-l"):
             return subprocess.CompletedProcess(args, 0, "List of devices attached\n" + self.listing, "")
         if args[0] == "install":
+            if args[1:3] == ("--no-streaming", "-r"):
+                def effect():
+                    self.launcher_updated = True
+                    path = "/data/app/com.chinatsp.launcher-owned==/base.apk"
+                    self.paths["com.chinatsp.launcher"] = path
+                    self.hashes[path] = tool.PROFILE["launcher"]["update"]["sha256"]
+                self.mutate("launcher_install", effect)
+                return subprocess.CompletedProcess(args, 0, "Success\n", "")
             assert args[1:3] == ("--user", "0")
             def effect():
                 self.packages[tool.RECEIVER]["installed"] = True
@@ -93,6 +105,15 @@ class FakeADB(tool.ADB):
             state = self.packages.get(words[2], {"installed": False})
             if not state["installed"]:
                 return "Unable to find package"
+            if words[2] == "com.chinatsp.launcher":
+                flags = "SYSTEM HAS_CODE" + (" UPDATED_SYSTEM_APP" if self.launcher_updated else "")
+                return ('Packages:\n  Package [com.chinatsp.launcher] (abc):\n'
+                        f'    userId={self.launcher_uid}\n'
+                        '    sharedUser=SharedUserSetting{abc android.uid.system/1000}\n'
+                        f'    pkgFlags=[ {flags} ]\n'
+                        f'    versionCode={self.launcher_version} minSdk=28\n'
+                        '    versionName=C_2024072610\n'
+                        f'    User 0: installed=true hidden=false enabled={state["enabled"]}\n')
             return (f'versionCode={state.get("version_code", 1)} minSdk=16\n'
                     f'versionName={state.get("version_name", "factory")}\n'
                     f'User 0: installed=true hidden=false stopped=false enabled={state["enabled"]}\n')
@@ -100,6 +121,9 @@ class FakeADB(tool.ADB):
             return "package:" + self.paths[words[4]]
         if words[0] == "sha256sum":
             return self.hashes[words[1]] + "  " + words[1]
+        if words[:3] == ["cmd", "package", "resolve-activity"]:
+            assert "--components" in words
+            return self.launcher_home
         if words == ["id"] and root:
             return "uid=0(root) gid=0(root)" if self.root else "uid=2000(shell) gid=2000(shell)"
         if words == ["cat", tool.PREFS] and root:
@@ -118,8 +142,14 @@ class FakeADB(tool.ADB):
                 raise AssertionError(f"Unexpected broadcast: {words}")
             return "Broadcast completed: result=0"
         if words[:2] == ["am", "start"]:
-            self.mutate("launch", lambda: None)
+            self.mutate("home" if words[-1] == tool.PROFILE["launcher"]["home"] else "launch", lambda: None)
             return "Starting: Intent"
+        if words == ["pm", "uninstall", "-k", "com.chinatsp.launcher"] and not root:
+            def effect():
+                self.launcher_updated = False
+                self.paths["com.chinatsp.launcher"] = tool.PROFILE["launcher"]["path"]
+            self.mutate("launcher_restore", effect)
+            return "Success"
         if words[:2] == ["pm", "uninstall"] and root and words[-1] == tool.RECEIVER:
             def effect():
                 self.packages[tool.RECEIVER]["installed"] = False
@@ -133,7 +163,7 @@ class FakeADB(tool.ADB):
         raise AssertionError(f"Unexpected shell command: {words}, root={root}")
 
 
-class DeviceTests(unittest.TestCase):
+class DeviceFixture(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
@@ -142,6 +172,13 @@ class DeviceTests(unittest.TestCase):
         self.downloader = patch.object(tool, "obtain_apk", return_value=Path("pinned.apk"))
         self.downloader.start()
         self.addCleanup(self.downloader.stop)
+        # Patch construction and file pins have separate artifact tests.
+        builder = patch.object(tool, "prepare_launcher", return_value=Path("launcher.apk"))
+        builder.start()
+        self.addCleanup(builder.stop)
+        checker = patch.object(tool, "verify_launcher_file", side_effect=lambda path, **kw: Path(path))
+        checker.start()
+        self.addCleanup(checker.stop)
 
     def setup_car(self, car):
         return tool.setup(car, self.state, tool.inspect(car))
@@ -149,6 +186,8 @@ class DeviceTests(unittest.TestCase):
     def restore_car(self, car):
         return tool.restore(car, self.state, tool.inspect(car))
 
+
+class DeviceTests(DeviceFixture):
     def test_matching_firmware_check_is_read_only(self):
         car = FakeADB()
         report = tool.inspect(car)
@@ -249,7 +288,7 @@ class DeviceTests(unittest.TestCase):
         car.on_write = verify_backup
         result = self.setup_car(car)
         self.assertEqual("configured", result["status"])
-        self.assertEqual(["install", "carauto", "layout", "launch", "refresh"], car.writes)
+        self.assertEqual(["install", "carauto", "layout", "launcher_install", "home", "launch", "refresh"], car.writes)
         self.assertEqual(3, car.packages[tool.CARAUTO]["enabled"])
         self.assertEqual(0, car.layout)
         self.assertTrue(car.packages[tool.RECEIVER]["installed"])

@@ -8,12 +8,19 @@ Getting there took a bit of trial and error. Wireless was laggy, USB kept throwi
 connection prompts, and even when Android Auto worked, the factory interface left
 big bars on both sides. I ended up using **Open Headunit**, disabling the original
 **CarAuto** app, and saving the factory's per-app fullscreen setting. Wired AA now
-works on my car, and the changes survived a full reboot.
+works on my car, and the changes survived a normal Android reboot.
 [See the before-and-after screenshots](#screenshots-from-my-car).
 
+I also changed the factory launcher's large **Connection / CarAuto** card into
+an **Android Auto / Open Headunit** button. It opens the receiver directly, with
+the duplicate small OpenHU tile and unwanted launcher entries hidden. Music,
+Radio, Bluetooth phone and the factory Home button keep their usual roles.
+[See the launcher before and after](#android-auto-on-the-factory-home-screen).
+
 I've included an agent-friendly setup as the first option below. The script
-checks the headunit before changing anything and keeps a backup so you can undo
-its changes.
+checks the headunit before changing anything, installs this tested launcher
+update automatically as part of setup, and keeps a backup so you can undo its
+changes. There is no separate launcher installation step.
 
 ## Option 1 — Let your AI agent handle it
 
@@ -82,6 +89,12 @@ If it can't find your car, I've collected the common causes in
 For a read-only compatibility check, run `python3 oshan_x7.py check` (Windows:
 `py -3 oshan_x7.py check`).
 
+Setup checks the exact firmware, immutable factory launcher, active launcher
+identity and default Home activity first. It then installs Open Headunit if
+needed, disables CarAuto, saves fullscreen behavior and installs the tested
+launcher as an Android app update. It keeps the original system APK in place.
+Unknown firmware or launcher builds stop the process.
+
 ## Start Android Auto after setup
 
 1. Complete **Open Headunit** onboarding on the car. Choose **USB**, allow its
@@ -93,11 +106,45 @@ For a read-only compatibility check, run `python3 oshan_x7.py check` (Windows:
    phone's Android Auto prompts and Open Headunit's USB access prompt.
 4. Check the picture, audio, touch, voice input, and access to normal car controls.
    Check again after a normal reboot.
+5. Press factory **Home** and try the large **Android Auto** card. It should open
+   Open Headunit, and Home should return to the edited launcher.
 
 This USB-role switch caught me out during testing: the shared port needs
 **Device mode for the laptop** and **Host mode for the phone**.
 The little factory Home/Back buttons still stay on screen. On mine, the Home
 button overlaps some Android Auto controls; I left that alone for now.
+
+On my car, wired AA stayed connected using the **video-recording USB port**.
+The other port repeatedly disconnected, including after about 10–15 seconds.
+If that happens, try the recording port with the same data cable. The cause of
+that port difference is unresolved. **Gemini/microphone recognition is also
+unresolved on my car**; this launcher update does not fix voice input.
+
+## Android Auto on the factory Home screen
+
+The factory Home screen had a large CarAuto card even after Open Headunit was
+installed. Opening AA meant using its smaller app tile instead. This update
+gives that large card to Android Auto, removes the redundant small OpenHU tile,
+and hides the launcher/test-launcher entries from the app menu. It keeps the
+existing Music, Radio and Bluetooth layout, including the factory Home overlay.
+
+**Before:** the original Connection / CarAuto card, with OpenHU as a small tile.
+
+![Factory Home screen with the large CarAuto card and smaller Open Headunit tile](docs/images/launcher-before.png)
+
+**After:** the large Android Auto card opens Open Headunit directly. The small
+duplicate is gone. This capture was taken after a normal Android reboot.
+
+![Edited factory Home screen with the large Android Auto card and no duplicate OpenHU tile](docs/images/launcher-after.png)
+
+The app menu also keeps its native entries without a second launcher icon:
+
+![App menu after cleanup, showing file management, settings, voice assistant and car recorder](docs/images/launcher-app-menu.png)
+
+These are actual launcher captures from my car, not pictures of an active AA
+session. I separately tested the large card, Home return, usual native controls
+and wired AA. The unified installer still needs its own full live setup/restore
+test. [Launcher details, checks and recovery](docs/launcher.md).
 
 ## Screenshots from my car
 
@@ -129,6 +176,11 @@ python3 oshan_x7.py restore
 On Windows, use `py -3 oshan_x7.py restore`. If setup was interrupted, reconnect
 and run restore before trying a new setup. [Backup and recovery details](docs/reference.md#backups-and-recovery).
 
+Restore first removes the launcher update **only if this setup cycle installed
+it**, returning to the untouched factory APK while retaining launcher data. A
+launcher update that was present before setup is kept. CarAuto, fullscreen and
+receiver ownership are then restored from the same saved journal.
+
 ## What I've tested, and what I haven't
 
 My car is a **2025 Changan Oshan X7**, right-hand drive, with an **F202_MCA /
@@ -138,10 +190,13 @@ because it also says Oshan X7, so the script checks the firmware, MCU, hardware,
 screen, and original launcher hash. It stops if they don't match.
 [Full compatibility details](docs/reference.md#compatibility).
 
-I've tested the individual changes on my car: wired Android Auto works, fills the
-width, and survives a reboot. **I haven't yet run the new automated installer
-through a complete setup-and-restore cycle on the car.** Its software tests pass,
-but that's a separate check.
+I've tested the individual changes on my car: wired Android Auto works on the
+recording USB port and fills the width. The exact launcher build included here
+was installed and its icons, large card and Home return survived a normal
+Android reboot. The earlier launcher also passed a factory rollback/reinstall
+test. **The unified v0.2 installer has not yet completed a full setup-and-restore
+cycle on the car.** Its software tests pass; that is a separate check. I haven't
+tested a cold ignition/power-off cycle or exhaustively tested every car function.
 
 **I also haven't tried wireless again since disabling CarAuto.** It might be
 worth investigating, but I can't tell you it works. After setup, check the actual
@@ -157,8 +212,10 @@ picture, audio, and controls on your own car; a successful command isn't that te
 Credit for the Android Auto receiver goes to
 **[Open Headunit](https://github.com/andreknieriem/open-headunit)** and its maintainers.
 I used **3.5.0 / code 119** here; the script downloads that official APK and checks
-its checksum. I'm sharing the setup scripts, not repackaging their app or the
-car's factory APKs.
+its checksum. The launcher patch is applied locally to the exact factory APK
+read from the car, producing the pinned tested update. Full factory/modified
+APKs and device backups stay private; only the patch and reviewed screenshots
+are included here. Open Headunit itself still comes from its official release.
 
 I'm not affiliated with Changan or Google. My installer code and documentation
 are available under the [MIT license](LICENSE).

@@ -20,7 +20,19 @@
   "launcher": {
     "package": "com.chinatsp.launcher",
     "path": "/system/app/F202_Launcher/F202_Launcher.apk",
-    "sha256": "0c50bad53fa2116e98928c74be78e1b9609a1d3f73d3ee42726b001ae7ddefb0"
+    "sha256": "0c50bad53fa2116e98928c74be78e1b9609a1d3f73d3ee42726b001ae7ddefb0",
+    "bytes": 8256512,
+    "version_code": 20240726,
+    "uid": 1000,
+    "home": "com.chinatsp.launcher/.MainAct",
+    "update": {
+      "sha256": "03ef3a861c43124f184f0d675400f9a6022b0100f1a96e3e498dc096041f66b8",
+      "bytes": 8274207,
+      "certificate_sha256": "c8a2e9bccf597c2fb6dc66bee293fc13f2fc47ec77bc6b2b0d52c11f51192ab8",
+      "patch": "patches/f202-launcher-openhu.bsdiff",
+      "patch_sha256": "407e6292825edfb6dd55f7aae1109fd6e98771bc2b27c8bcd8184aabb789ed57",
+      "patch_bytes": 4659638
+    }
   },
   "required_packages": [
     "com.android.systemui",

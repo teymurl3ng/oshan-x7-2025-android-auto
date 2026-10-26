@@ -1,0 +1,76 @@
+--- v1/smali/com/chinatsp/launcher/BaseAct.smali
++++ menu/smali/com/chinatsp/launcher/BaseAct.smali
+@@ -1183,7 +1183,7 @@
+ .method public addApp(Ljava/lang/String;)V
+     .locals 7
+ 
+-    invoke-static {p1}, Lcom/chinatsp/launcher/utils/UtilsPkg;->isRetiredPackage(Ljava/lang/String;)Z
++    invoke-static {p1}, Lcom/chinatsp/launcher/utils/UtilsPkg;->isHiddenMenuPackage(Ljava/lang/String;)Z
+ 
+     move-result v0
+ 
+--- v1/smali/com/chinatsp/launcher/bean/BeanApp.smali
++++ menu/smali/com/chinatsp/launcher/bean/BeanApp.smali
+@@ -344,7 +344,7 @@
+     iget-object v1, p0, Lcom/chinatsp/launcher/room/RmBeanApp;->pkg:Ljava/lang/String;
+ 
+ 
+-    invoke-static {v1}, Lcom/chinatsp/launcher/utils/UtilsPkg;->isRetiredPackage(Ljava/lang/String;)Z
++    invoke-static {v1}, Lcom/chinatsp/launcher/utils/UtilsPkg;->isHiddenMenuPackage(Ljava/lang/String;)Z
+     move-result v1
+     if-eqz v1, :cond_1
+     const/4 v0, 0x0
+--- v1/smali/com/chinatsp/launcher/utils/UtilsPkg.smali
++++ menu/smali/com/chinatsp/launcher/utils/UtilsPkg.smali
+@@ -170,11 +170,7 @@
+     .line 130
+     iget-object v5, v4, Landroid/content/pm/PackageInfo;->packageName:Ljava/lang/String;
+ 
+-    invoke-virtual {p0}, Landroid/content/Context;->getPackageName()Ljava/lang/String;
+-
+-    move-result-object v8
+-
+-    invoke-virtual {v5, v8}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
++    invoke-static {v5}, Lcom/chinatsp/launcher/utils/UtilsPkg;->isHiddenMenuPackage(Ljava/lang/String;)Z
+ 
+     move-result v5
+ 
+@@ -859,6 +855,10 @@
+     iget-object v8, v8, Landroid/content/pm/ResolveInfo;->activityInfo:Landroid/content/pm/ActivityInfo;
+ 
+     iget-object v8, v8, Landroid/content/pm/ActivityInfo;->packageName:Ljava/lang/String;
++
++    invoke-static {v8}, Lcom/chinatsp/launcher/utils/UtilsPkg;->isHiddenMenuPackage(Ljava/lang/String;)Z
++    move-result v9
++    if-nez v9, :cond_0
+ 
+     invoke-virtual {v7, v8}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+ 
+@@ -1056,3 +1056,27 @@
+     invoke-virtual {v0}, Landroid/widget/Toast;->show()V
+     return-void
+ .end method
++
++.method public static isHiddenMenuPackage(Ljava/lang/String;)Z
++    .locals 1
++    invoke-static {p0}, Lcom/chinatsp/launcher/utils/UtilsPkg;->isRetiredPackage(Ljava/lang/String;)Z
++    move-result v0
++    if-nez v0, :hidden
++    const-string v0, "com.andrerinas.headunitrevived"
++    invoke-virtual {v0, p0}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
++    move-result v0
++    if-nez v0, :hidden
++    const-string v0, "com.chinatsp.launcher"
++    invoke-virtual {v0, p0}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
++    move-result v0
++    if-nez v0, :hidden
++    const-string v0, "com.chinatsp.launcher.openhutest"
++    invoke-virtual {v0, p0}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
++    move-result v0
++    if-nez v0, :hidden
++    const/4 v0, 0x0
++    return v0
++    :hidden
++    const/4 v0, 0x1
++    return v0
++.end method

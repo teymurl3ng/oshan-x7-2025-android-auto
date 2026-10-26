@@ -20,8 +20,9 @@ import urllib.request
 import xml.etree.ElementTree as ET
 
 from prepare import find_adb
+from launcher_patch import apply as apply_launcher_patch, PatchError
 
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 ROOT = Path(__file__).resolve().parent
 PROFILE_PATH = ROOT / "profiles" / "f202-mca-rhd-20241022.json"
 CARAUTO = "com.eryanet.vlink"
@@ -199,7 +200,48 @@ def remote_hash(adb, path):
     return match[1].lower()
 
 
-def inspect(adb):
+def launcher_state(adb, check_home=True):
+    """Accept only the immutable factory base or the exact tested system update."""
+    pin = PROFILE["launcher"]
+    if remote_hash(adb, pin["path"]) != pin["sha256"]:
+        raise SetupError("Immutable factory launcher hash does not match the verified original.")
+    raw = adb.shell("dumpsys", "package", pin["package"])
+    match = re.search(r"^  Package \[com\.chinatsp\.launcher\][^\n]*:\n(.*?)(?=^\S|^  Package |\Z)",
+                      raw, re.M | re.S)
+    if not match:
+        raise SetupError("Cannot identify the active factory launcher package record.")
+    block = match[1]
+    state = parse_package(block)
+    uid = re.search(r"^\s*userId=(\d+)$", block, re.M)
+    flags = re.search(r"^\s*(?:pkgFlags|flags)=\[([^\]]*)\]", block, re.M)
+    if (not state["installed"] or state.get("enabled") not in (0, 1) or
+            state.get("version_code") != pin["version_code"] or not uid or
+            int(uid[1]) != pin["uid"] or "android.uid.system/1000" not in block or not flags):
+        raise SetupError("Launcher UID, shared UID, version or enabled state is unsupported.")
+    flags = set(flags[1].split())
+    if "SYSTEM" not in flags:
+        raise SetupError("Launcher is not registered as the factory system app.")
+    path = apk_path(adb, pin["package"])
+    sha = remote_hash(adb, path)
+    updated = "UPDATED_SYSTEM_APP" in flags
+    if path == pin["path"]:
+        valid = sha == pin["sha256"] and not updated
+        build = "factory"
+    else:
+        valid = (sha == pin["update"]["sha256"] and updated and
+                 re.fullmatch(r"/data/app/com\.chinatsp\.launcher-[A-Za-z0-9_+=@~-]+/base\.apk", path))
+        build = "openhu"
+    if not valid:
+        raise SetupError("Unknown launcher path/hash; refusing to replace or remove it.")
+    home = adb.shell("cmd", "package", "resolve-activity", "--components", "-a",
+                     "android.intent.action.MAIN", "-c", "android.intent.category.HOME")
+    if check_home and home not in (pin["home"], pin["package"] + "/com.chinatsp.launcher.MainAct"):
+        raise SetupError("Unexpected default HOME activity; inspect it before setup.")
+    return {"build": build, "sha256": sha, "path": path, "uid": pin["uid"],
+            "version_code": pin["version_code"], "updated_system_app": updated, "home": home}
+
+
+def inspect(adb, recovery=False):
     """Read only: every listed mismatch prevents setup AND restore writes."""
     adb.select_usb()
     props = parse_properties(adb.shell("getprop"))
@@ -226,10 +268,10 @@ def inspect(adb):
             failures.append(f"Required factory package is missing for user 0: {name}")
         elif name != CARAUTO and state["enabled"] not in (0, 1):
             failures.append(f"Required factory package is disabled for user 0: {name}")
-    launcher = PROFILE["launcher"]
-    path = apk_path(adb, launcher["package"])
-    if path != launcher["path"] or remote_hash(adb, path) != launcher["sha256"]:
-        failures.append("Factory launcher path/hash does not match the verified original.")
+    try:
+        launcher = launcher_state(adb, check_home=not recovery)
+    except SetupError as exc:
+        failures.append(str(exc))
     if failures:
         return {"compatible": False, "profile": PROFILE["id"], "mismatches": failures}
     if not re.search(r"\buid=0\b", adb.shell("id", root=True)):
@@ -250,6 +292,7 @@ def inspect(adb):
             "carauto": package(adb, CARAUTO), "receiver": receiver,
             "fullscreen_value": layout, "usb_mode": props.get("OTG_MODE", "unknown"),
             "firmware": props["ro.build.display.id"], "root": "su 0",
+            "launcher": launcher,
             "_prefs_xml": xml}
 
 
@@ -306,6 +349,61 @@ def backup_path(adb, state_dir):
     return state_dir / "devices" / identity / "backup.json"
 
 
+def verify_launcher_file(path, factory=False):
+    pin = PROFILE["launcher"] if factory else PROFILE["launcher"]["update"]
+    path = Path(path)
+    if not path.is_file() or path.stat().st_size != pin["bytes"] or digest(path) != pin["sha256"]:
+        raise SetupError("Launcher APK size/SHA-256 does not match the pinned " +
+                         ("factory backup." if factory else "tested update."))
+    return path
+
+
+def prepare_launcher(adb, folder):
+    """Read the matching factory APK and reconstruct the tested update locally."""
+    pin = PROFILE["launcher"]
+    update = pin["update"]
+    patch = ROOT / update["patch"]
+    if (not patch.is_file() or patch.stat().st_size != update["patch_bytes"] or
+            digest(patch) != update["patch_sha256"]):
+        raise SetupError("Bundled launcher patch is missing or changed; download a complete repo copy.")
+    folder.mkdir(parents=True, exist_ok=True, mode=0o700)
+    factory = folder / "factory-launcher.apk"
+    target = folder / "openhu-launcher.apk"
+    if factory.exists():
+        verify_launcher_file(factory, factory=True)
+    else:
+        fd, temporary = tempfile.mkstemp(prefix=".factory-", dir=folder)
+        os.close(fd)
+        try:
+            adb.run("pull", pin["path"], temporary, timeout=90)
+            verify_launcher_file(temporary, factory=True)
+            os.chmod(temporary, 0o600)
+            with open(temporary, "r+b") as stream:
+                os.fsync(stream.fileno())
+            os.replace(temporary, factory)
+        finally:
+            if os.path.exists(temporary):
+                os.unlink(temporary)
+    if target.exists():
+        return verify_launcher_file(target)
+    try:
+        payload = apply_launcher_patch(factory.read_bytes(), patch.read_bytes(), update["bytes"])
+    except PatchError as exc:
+        raise SetupError("Could not reconstruct the pinned launcher: " + str(exc)) from exc
+    fd, temporary = tempfile.mkstemp(prefix=".launcher-", dir=folder)
+    try:
+        with os.fdopen(fd, "wb") as stream:
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+        verify_launcher_file(temporary)
+        os.replace(temporary, target)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+    return target
+
+
 def load_backup(path, adb):
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
@@ -313,7 +411,8 @@ def load_backup(path, adb):
         raise SetupError(f"Cannot read the original backup: {path}") from exc
     if not isinstance(value, dict):
         raise SetupError("Backup must contain an object.")
-    if (value.get("schema") != 1 or value.get("profile") != PROFILE["id"] or
+    if (type(value.get("schema")) is not int or value.get("schema") not in (1, 2) or
+            value.get("profile") != PROFILE["id"] or
             value.get("serial") != adb.serial):
         raise SetupError("Backup identity/profile differs from the connected device; refusing restore.")
     original = value.get("original", {})
@@ -334,15 +433,24 @@ def load_backup(path, adb):
     layout = original.get("fullscreen_value")
     if layout is not None and (type(layout) is not int or not -(2**31) <= layout < 2**31):
         raise SetupError("Backup contains an invalid fullscreen value.")
+    if value["schema"] == 2:
+        launcher = original.get("launcher")
+        pin = PROFILE["launcher"]
+        if (not isinstance(launcher, dict) or launcher.get("build") not in {"factory", "openhu"} or
+                launcher.get("uid") != pin["uid"] or launcher.get("version_code") != pin["version_code"] or
+                launcher.get("sha256") != (pin["sha256"] if launcher["build"] == "factory" else pin["update"]["sha256"])):
+            raise SetupError("Backup contains an invalid original launcher identity.")
+    elif any(e["name"] == "install_launcher" for e in value["operations"]):
+        raise SetupError("Legacy backup cannot own a launcher installation.")
     return value
 
 
 def create_backup(path, adb, report):
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     # Atomic journal is durable before the first device mutation.
-    value = {"schema": 1, "tool_version": VERSION, "profile": PROFILE["id"],
+    value = {"schema": 2, "tool_version": VERSION, "profile": PROFILE["id"],
              "serial": adb.serial, "created_at": now(), "phase": "backed_up",
-             "original": {key: report[key] for key in ("carauto", "receiver", "fullscreen_value")},
+             "original": {key: report[key] for key in ("carauto", "receiver", "fullscreen_value", "launcher")},
              "operations": [], "restored": False}
     fd = os.open(path.parent / "systemui-prefs-before.xml", os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, "w", encoding="utf-8") as stream:
@@ -398,8 +506,38 @@ def install(adb, path):
         raise SetupError("Installed receiver did not pass verification.")
 
 
+def install_launcher(adb, path):
+    verify_launcher_file(path)
+    before = inspect(adb)
+    require_compatible(before)
+    if (before["launcher"]["build"] != "factory" or before["usb_mode"] != "1" or
+            before["carauto"]["enabled"] != 3 or before["fullscreen_value"] != 0 or
+            not before["receiver"]["installed"]):
+        raise SetupError("Launcher installation requires the verified factory and wired-AA baseline.")
+    result = adb.run("install", "--no-streaming", "-r", str(path), timeout=180)
+    if not re.search(r"^Success\s*$", result.stdout, re.M):
+        raise SetupError("Launcher installation did not confirm success; reconnect and run restore.")
+    if launcher_state(adb)["build"] != "openhu":
+        raise SetupError("Installed launcher did not pass APK/UID/HOME read-back.")
+
+
+def restore_launcher(adb):
+    before = launcher_state(adb, check_home=False)
+    if before["build"] == "factory":
+        launcher_state(adb)  # Verify HOME, including after an uncertain earlier rollback.
+        return
+    # This is an updated SYSTEM app. No --user: that would remove/disable HOME
+    # for user 0 instead of restoring the immutable base. Equal versionCode and
+    # -k retain its data, following the tested Android 9 rollback procedure.
+    result = adb.shell("pm", "uninstall", "-k", PROFILE["launcher"]["package"])
+    if result != "Success" or launcher_state(adb)["build"] != "factory":
+        raise SetupError("Factory launcher rollback did not verify. Keep USB connected and the journal.")
+
+
 def setup(adb, state_dir, report, supplied_apk=None):
     require_compatible(report)
+    if report["usb_mode"] != "1":
+        raise SetupError("Select USB Device mode for the laptop before setup.")
     path = backup_path(adb, state_dir)
     with exclusive(state_dir):
         journal = load_backup(path, adb) if path.exists() else None
@@ -411,13 +549,32 @@ def setup(adb, state_dir, report, supplied_apk=None):
         if journal and journal["phase"] == "configured":
             if (report["carauto"]["enabled"] == 3 and report["fullscreen_value"] == 0 and
                     report["receiver"]["installed"]):
-                return {"status": "already_configured", "backup": str(path), "device_writes": False,
-                        "next": "Disconnect the laptop, select USB Host mode, and connect the phone."}
-            raise SetupError("Device settings changed after setup. Run restore before reapplying.")
+                if report["launcher"]["build"] == "openhu":
+                    if journal["schema"] == 1:
+                        journal["schema"] = 2
+                        journal["original"]["launcher"] = report["launcher"]
+                        journal["launcher_adopted_as_preexisting_at"] = now()
+                        write_json(path, journal)
+                    return {"status": "already_configured", "backup": str(path), "device_writes": False,
+                            "next": "Disconnect the laptop, select USB Host mode, and connect the phone."}
+                if journal["schema"] != 1:
+                    raise SetupError("Launcher changed after setup. Run restore before reapplying.")
+                # Extend a completed v0.1 cycle without losing its original AA
+                # settings or claiming ownership of a preexisting launcher.
+            else:
+                raise SetupError("Device settings changed after setup. Run restore before reapplying.")
         # Obtain/verify the artifact before making a backup or writing to the car.
         apk = None if report["receiver"]["installed"] else obtain_apk(state_dir, supplied_apk)
+        launcher_apk = (prepare_launcher(adb, path.parent)
+                        if report["launcher"]["build"] == "factory" else None)
         if journal is None:
             journal = create_backup(path, adb, report)
+        elif journal["schema"] == 1:
+            journal["schema"] = 2
+            journal["original"]["launcher"] = report["launcher"]
+            journal["launcher_upgrade_at"] = now()
+            journal["phase"] = "backed_up"
+            write_json(path, journal)
         try:
             if apk is not None:
                 operation(path, journal, "install_receiver", lambda: install(adb, apk))
@@ -425,17 +582,23 @@ def setup(adb, state_dir, report, supplied_apk=None):
                 operation(path, journal, "disable_carauto", lambda: set_enabled(adb, 3))
             if report["fullscreen_value"] != 0:
                 operation(path, journal, "fullscreen", lambda: broadcast_layout(adb, 0))
+            if launcher_apk is not None:
+                operation(path, journal, "install_launcher", lambda: install_launcher(adb, launcher_apk))
+                operation(path, journal, "open_launcher", lambda: adb.shell(
+                    "am", "start", "--user", "0", "-n", PROFILE["launcher"]["home"]))
             # Launch once; all first-run grants and connection choices stay visible to the owner.
             operation(path, journal, "open_receiver",
                       lambda: adb.shell("am", "start", "--user", "0", "-n", MAIN_ACTIVITY))
             operation(path, journal, "refresh_layout", lambda: refresh(adb))
-            verified = (package(adb, CARAUTO).get("enabled") == 3 and
-                        parse_layout(adb.shell("cat", PREFS, root=True)) == 0 and
-                        package(adb, RECEIVER).get("installed"))
+            after = inspect(adb)
+            require_compatible(after)
+            verified = (after["carauto"]["enabled"] == 3 and after["fullscreen_value"] == 0 and
+                        after["receiver"]["installed"] and after["launcher"]["build"] == "openhu")
             if not verified:
                 raise SetupError("Final read-back failed. Run restore with the saved backup.")
             journal["phase"] = "configured"
             journal["configured_at"] = now()
+            journal["launcher_after"] = after["launcher"]
             write_json(path, journal)
         except (Exception, KeyboardInterrupt):
             # A dropped cable cannot be rolled back over a nonexistent connection. Preserve the
@@ -443,6 +606,7 @@ def setup(adb, state_dir, report, supplied_apk=None):
             print(f"Setup interrupted. Backup retained: {path}. Reconnect and run restore.", file=sys.stderr)
             raise
     return {"status": "configured", "backup": str(path), "projection_tested": False,
+            "launcher": after["launcher"],
             "next": ["Complete Open Headunit onboarding and choose USB; allow its requested permissions.",
                      "Disconnect the laptop, select USB Host mode in factory settings, and connect the phone.",
                      "Accept phone/USB prompts; verify picture, audio, touch, microphone, and factory controls."],
@@ -451,12 +615,21 @@ def setup(adb, state_dir, report, supplied_apk=None):
 
 def restore(adb, state_dir, report):
     require_compatible(report)
+    if report["usb_mode"] != "1":
+        raise SetupError("Select USB Device mode for the laptop before restore.")
     path = backup_path(adb, state_dir)
     with exclusive(state_dir):
         journal = load_backup(path, adb)
         if journal["restored"]:
             return {"status": "already_restored", "device_writes": False, "backup": str(path)}
         original = journal["original"]
+        owns_launcher = (journal["schema"] == 2 and original["launcher"]["build"] == "factory" and
+                         any(e["name"] == "install_launcher" for e in journal["operations"]))
+        if report["launcher"]["home"] not in (PROFILE["launcher"]["home"],
+                PROFILE["launcher"]["package"] + "/com.chinatsp.launcher.MainAct") and not owns_launcher:
+            raise SetupError("Unexpected HOME and no owned launcher update to recover; no restore writes are safe.")
+        if owns_launcher:
+            operation(path, journal, "restore_launcher", lambda: restore_launcher(adb))
         wanted = original["fullscreen_value"]
         # The verified factory API has no delete-key command. -1 has the same layout behavior
         # as an originally absent key, without rewriting all of SystemUI's preferences.
@@ -512,7 +685,7 @@ def main(argv=None):
             raise SetupError("--apk is only used by setup.")
         adb = ADB(args.adb, args.adb_port, args.serial)
         state_dir = args.state_dir.expanduser().resolve()
-        report = inspect(adb)
+        report = inspect(adb, recovery=args.command == "restore")
         if args.command in ("check", "status"):
             result = public_report(report)
             result["device_writes"] = False

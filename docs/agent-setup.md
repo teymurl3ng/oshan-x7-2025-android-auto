@@ -141,6 +141,13 @@ needed; keep these options for later status/restore calls. Run setup **only when
 check succeeds**. Preserve the original backup. Never weaken firmware checks to
 turn an unsupported car into a supported one.
 
+Setup also installs the pinned Home-screen update after the exact factory and
+active launcher checks pass. It builds it locally from the car's original APK
+using the bundled patch; Python and ADB remain the only owner-side tools. Do not
+download an arbitrary replacement launcher or run another installer alongside it.
+An already installed exact update is preserved as preexisting unless this
+setup's journal owns it. Keep that ownership distinction on restore.
+
 ## 6. Finish and report
 
 Guide Open Headunit's visible onboarding and USB permissions. Then have the owner
@@ -148,6 +155,12 @@ disconnect the laptop, set **Host mode**, and attach the phone. Test actual imag
 audio, touch, microphone, normal car controls, and reboot persistence with the owner.
 Use available screen inspection to help with onboarding when practical; leave
 authorization prompts to the person. Do not repeatedly send connect commands.
+
+Check that the large Android Auto card opens OpenHU, the small duplicate and
+launcher/test entries are absent, and factory Home returns to the launcher.
+The owner's video-recording USB port worked; the ordinary port remained unstable.
+Microphone recognition remains unresolved and must not be reported as fixed.
+See [launcher details](launcher.md) for the actual build and live-test limits.
 
 Report the tool paths, compatibility result, changed settings, backup location,
 and outcome of the phone test. Separate read-back results from owner observations.

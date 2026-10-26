@@ -20,5 +20,12 @@ Please don't remove checks just to get a different unit through setup. Don't sub
 APKs, phone data, credentials, or broad debloat lists. The original code is MIT;
 upstream apps retain their own licenses.
 
+The supported launcher is distributed as a pinned binary patch applied to the
+owner's matching original APK. Keep both full APKs and all signing keys private.
+Do not change an artifact pin without inspecting the resulting code and
+qualifying that exact build on the car. Preserve legacy backup compatibility,
+unchanged factory-base checks and ownership on rollback; an update that was
+already present before setup must never be claimed or removed by a new cycle.
+
 Run `python3 -m unittest discover -s tests -v` for code changes. Tests must exercise
 failure paths and the limits on device mutations as well as successful setup.
