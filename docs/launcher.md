@@ -11,7 +11,7 @@ The Bluetooth card keeps its original size and position.
 
 ## How setup installs it
 
-Run the usual `python3 oshan_x7.py setup`; there is no extra launcher command.
+Run `python3 oshan_x7.py setup --reboot-check`; there is no extra launcher command.
 The same applies when following the agent workflow.
 
 1. Read the exact firmware, MCU, hardware, physical display, Android user and
@@ -28,14 +28,16 @@ The same applies when following the agent workflow.
    factory fullscreen setting. Recheck compatibility before the launcher write.
 5. Install the launcher through normal Android package management as an update
    of the factory app. Android enforces the existing signing identity. Read back
-   its exact APK hash, UID, version, update flag and default HOME. Open the Home
-   activity, then OpenHU for visible onboarding and permissions.
+   its exact APK hash, UID, version, update flag and default HOME. Open Home,
+   require healthy foreground/process observations and no fresh relevant crash/ANR,
+   then open OpenHU. The reboot check repeats state and UI health checks after a
+   normal Android reboot while the laptop stays connected.
 
 The system-partition factory APK is retained. Firmware partitions, Google
 services and the USB role are not changed. Within the launcher, retired CarAuto
 shortcuts and its voice app targets are removed or redirected to OpenHU. There
-is no microphone-routing repair. Setup does not reboot the unit or complete
-Android Auto permissions for the owner.
+is no microphone-routing repair. The normal Android reboot is requested only
+with `--reboot-check`; visible permissions and phone projection remain owner checks.
 
 ## Exact artifacts
 
@@ -76,8 +78,9 @@ launcher data. It is not the user-scoped removal used for the ordinary receiver
 app. Unknown firmware, base APK, active hash or UID prevents removal.
 
 A launcher already present before this setup is retained. An installation that
-lost its USB connection is not blindly repeated: the pending journal requires
-restore, which checks whether the factory or exact update is active. An
+lost its USB connection is not blindly repeated: setup attempts guarded recovery
+when possible, otherwise the pending journal requires restore after reconnection.
+Both use the same engine and check whether the factory or exact update is active. An
 interrupted rollback can likewise be resumed. Restore does not depend on the
 patch or generated update still being available; it uses the verified factory
 base already on the car. AA settings and receiver ownership are then restored.
@@ -85,6 +88,8 @@ base already on the car. AA settings and receiver ownership are then restored.
 Legacy v0.1 backups retain their original AA-only restore scope. A completed
 legacy setup can be extended by v0.2 while preserving its original AA baseline.
 An exact launcher already installed at upgrade time is treated as preexisting.
+A completed legacy cycle can also be extended by v0.3 without claiming external
+launcher ownership. [Unified recovery, component gates and limits](recovery.md).
 
 ## What has been tested
 
@@ -101,9 +106,9 @@ answer did not individually enumerate audio, touch or popup checks. Neither a
 cold ignition power cycle nor wireless AA was tested, and vehicle controls were
 not exhaustively audited. Microphone/Gemini recognition remains unresolved.
 
-**The combined v0.2 public installer has offline compatibility, ownership,
-artifact and interruption/recovery tests, but its full setup/restore cycle has
-not yet been run on the car.** Its reconstructed APK is byte-for-byte identical
+**The combined v0.3 public installer has offline compatibility, ownership,
+artifact, staged health, automatic recovery and reboot-check tests, but its full
+setup/restore cycle has not yet been run on the car.** Its reconstructed APK is byte-for-byte identical
 to the tested final build. Those are separate claims.
 
 The owner's separate OpenHU “Show toast messages” preference was turned off and

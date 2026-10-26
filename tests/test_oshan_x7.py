@@ -14,6 +14,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import oshan_x7 as tool
+import health_checks as health
 
 
 class FakeADB(tool.ADB):
@@ -50,6 +51,15 @@ class FakeADB(tool.ADB):
         self.launcher_uid = 1000
         self.launcher_version = 20240726
         self.launcher_home = tool.PROFILE["launcher"]["home"]
+        self.foreground = self.launcher_home
+        self.log_output = ""
+        self.dead_packages = set()
+        self.start_errors = {}
+        self.permission_prompt = False
+        self.disconnected = False
+        self.disconnect_on_failure = True
+        self.boot_id = "11111111-1111-4111-8111-111111111111"
+        self.reboot_returns = True
 
     def xml(self):
         item = "" if self.layout is None else f'<int name="{tool.RECEIVER}" value="{self.layout}" />'
@@ -60,15 +70,28 @@ class FakeADB(tool.ADB):
             self.on_write(name)
         self.writes.append(name)
         if self.fail_at == name and not self.fail_after_effect:
+            self.disconnected = self.disconnect_on_failure
             raise tool.SetupError("simulated cable loss")
         effect()
         if self.fail_at == name:
+            self.disconnected = self.disconnect_on_failure
             raise tool.SetupError("simulated cable loss after uncertain completion")
 
     def run(self, *args, target=True, timeout=30, allow_failure=False):
         self.commands.append(args)
+        if self.disconnected:
+            if args == ("devices", "-l"):
+                return subprocess.CompletedProcess(args, 0, "List of devices attached\n", "")
+            raise tool.SetupError("simulated disconnected transport")
         if args == ("devices", "-l"):
             return subprocess.CompletedProcess(args, 0, "List of devices attached\n" + self.listing, "")
+        if args == ("reboot",):
+            self.mutate("reboot", lambda: None)
+            if self.reboot_returns:
+                self.boot_id = "22222222-2222-4222-8222-222222222222"
+            else:
+                self.booted = "0"
+            return subprocess.CompletedProcess(args, 0, "", "")
         if args[0] == "install":
             if args[1:3] == ("--no-streaming", "-r"):
                 def effect():
@@ -93,6 +116,14 @@ class FakeADB(tool.ADB):
         return subprocess.CompletedProcess(args, 0, text, "")
 
     def respond(self, words, root):
+        if words == ["cat", "/proc/sys/kernel/random/boot_id"]:
+            return self.boot_id
+        if words[:2] == ["logcat", "-d"]:
+            return self.log_output
+        if words[0] == "pidof":
+            return "" if words[1] in self.dead_packages else "1234"
+        if words == ["dumpsys", "activity", "activities"]:
+            return f"mResumedActivity: ActivityRecord{{123 u0 {self.foreground} t7}}"
         if words == ["getprop"]:
             return "\n".join(f"[{key}]: [{value}]" for key, value in self.props.items())
         if words == ["getprop", "sys.boot_completed"]:
@@ -142,8 +173,11 @@ class FakeADB(tool.ADB):
                 raise AssertionError(f"Unexpected broadcast: {words}")
             return "Broadcast completed: result=0"
         if words[:2] == ["am", "start"]:
-            self.mutate("home" if words[-1] == tool.PROFILE["launcher"]["home"] else "launch", lambda: None)
-            return "Starting: Intent"
+            component = words[-1]
+            self.mutate("home" if component == tool.PROFILE["launcher"]["home"] else "launch", lambda: None)
+            self.foreground = ("com.android.packageinstaller/.permission.ui.GrantPermissionsActivity"
+                               if self.permission_prompt and component == tool.MAIN_ACTIVITY else component)
+            return self.start_errors.get(component, "Starting: Intent\nStatus: ok")
         if words == ["pm", "uninstall", "-k", "com.chinatsp.launcher"] and not root:
             def effect():
                 self.launcher_updated = False
@@ -165,6 +199,16 @@ class FakeADB(tool.ADB):
 
 class DeviceFixture(unittest.TestCase):
     def setUp(self):
+        self.ticks = 0
+        def advance(seconds):
+            self.ticks += seconds
+        for module, attr, replacement in ((health, "sleep", advance),
+                                          (health, "monotonic", lambda: self.ticks),
+                                          (tool.time, "sleep", advance),
+                                          (tool.time, "monotonic", lambda: self.ticks)):
+            clock_patch = patch.object(module, attr, replacement)
+            clock_patch.start()
+            self.addCleanup(clock_patch.stop)
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.state = Path(self.temporary.name) / "state"
@@ -288,7 +332,7 @@ class DeviceTests(DeviceFixture):
         car.on_write = verify_backup
         result = self.setup_car(car)
         self.assertEqual("configured", result["status"])
-        self.assertEqual(["install", "carauto", "layout", "launcher_install", "home", "launch", "refresh"], car.writes)
+        self.assertEqual(["home", "install", "launch", "carauto", "layout", "refresh", "launcher_install", "home", "launch"], car.writes)
         self.assertEqual(3, car.packages[tool.CARAUTO]["enabled"])
         self.assertEqual(0, car.layout)
         self.assertTrue(car.packages[tool.RECEIVER]["installed"])
@@ -343,6 +387,7 @@ class DeviceTests(DeviceFixture):
         with self.assertRaises(tool.SetupError):
             self.setup_car(car)
         car.fail_at = None
+        car.disconnected = False
         self.restore_car(car)
         self.assertFalse(car.packages[tool.RECEIVER]["installed"])
         self.assertEqual(0, car.packages[tool.CARAUTO]["enabled"])
@@ -354,6 +399,7 @@ class DeviceTests(DeviceFixture):
             self.setup_car(car)
         self.assertTrue(car.packages[tool.RECEIVER]["installed"])
         car.fail_at = None
+        car.disconnected = False
         self.restore_car(car)
         self.assertFalse(car.packages[tool.RECEIVER]["installed"])
 
@@ -364,6 +410,7 @@ class DeviceTests(DeviceFixture):
         with self.assertRaises(tool.SetupError):
             self.restore_car(car)
         car.fail_at = None
+        car.disconnected = False
         self.assertEqual("restored", self.restore_car(car)["status"])
         self.assertEqual(0, car.packages[tool.CARAUTO]["enabled"])
 
@@ -432,8 +479,9 @@ class DeviceTests(DeviceFixture):
             with self.assertRaises(tool.SetupError):
                 self.setup_car(car)
         journal = json.loads(tool.backup_path(car, self.state).read_text())
-        self.assertEqual("fullscreen", journal["phase"])
-        self.assertFalse(journal["operations"][-1]["complete"])
+        self.assertEqual("fullscreen", journal["failed_stage"])
+        self.assertEqual("restored", journal["phase"])
+        self.assertFalse(next(e for e in journal["operations"] if e["name"] == "fullscreen")["complete"])
 
     def test_lock_prevents_parallel_setup(self):
         car = FakeADB()

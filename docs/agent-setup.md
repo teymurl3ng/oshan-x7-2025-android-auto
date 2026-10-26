@@ -128,41 +128,88 @@ If no authorized USB transport appears, diagnose it:
 - **Multiple devices:** disconnect phones or select the car's verified USB serial
   explicitly. Network transports and emulators are refused by the CLI.
 
-Once authorized, using the same interpreter, ADB path, port, and USB target:
+Once authorized, retain the same interpreter, ADB executable, port, USB target
+and state directory. Never change transport/USB role during a command.
+
+## 6. Run the stages and act on their evidence
 
 ```sh
 python3 oshan_x7.py check --json
-python3 oshan_x7.py setup --json
+python3 oshan_x7.py setup --reboot-check --json
 python3 oshan_x7.py status --json
 ```
 
-Add `--adb /absolute/path/to/adb`, `--adb-port 5038`, and/or `--serial ...` only as
-needed; keep these options for later status/restore calls. Run setup **only when
-check succeeds**. Preserve the original backup. Never weaken firmware checks to
-turn an unsupported car into a supported one.
+Add `--adb "/absolute/path/to/adb"`, `--adb-port 5038` and/or `--serial ...` only
+as needed. Retain them for every later call. Setup must follow a successful
+**strict check**, not merely a recovery-eligible status. No force flag exists.
 
-Setup also installs the pinned Home-screen update after the exact factory and
-active launcher checks pass. It builds it locally from the car's original APK
-using the bundled patch; Python and ADB remain the only owner-side tools. Do not
-download an arbitrary replacement launcher or run another installer alongside it.
-An already installed exact update is preserved as preexisting unless this
-setup's journal owns it. Keep that ownership distinction on restore.
+| Stage | CLI evidence before proceeding | Agent action |
+| --- | --- | --- |
+| Compatibility | Exact firmware/MCU/display, factory and active launcher hash/UID/version/HOME, required apps, user 0, boot/root/receiver checks | Stop unknown configurations; diagnose rather than changing the profile |
+| Artifacts and backup | Official receiver pin; factory pull and patch/output pins; durable original state | Preserve the state directory; do not expose private data |
+| Baseline Home | Successful launch, resumed launcher, stable launcher/SystemUI processes, no fresh relevant crash/ANR | Stop and inspect a preexisting failure |
+| Receiver | Install if absent, hash/version read-back, healthy receiver foreground | Guide visible onboarding/permissions; don't silently grant them |
+| CarAuto | Exact disabled-user state read-back and SystemUI health | Continue automatically when verified |
+| Fullscreen | Saved value 0 and SystemUI health | Continue automatically; stored value is not proof of rendered width |
+| Launcher update | Exact reconstructed APK installed, hash/UID/version/HOME read-back, healthy foreground | Keep the factory base and journal; don't run a separate launcher installer |
+| Final state | All configured values plus healthy receiver | Complete visible onboarding while laptop stays connected |
+| Android reboot | One new boot identity, boot complete, configured state, Home/receiver health | Require `android_reboot_verified=true` before phone handoff |
+| Owner checks | Large card, Home, icons and usual native controls | Record what the owner actually tried |
+| Phone handoff | Disconnect laptop → Host模式 → phone on recording port | Owner tests real projection, sound, touch and reconnect |
 
-## 6. Finish and report
+Every journal operation is saved as incomplete before its action. Completion is
+saved only after that action's verification. The original snapshot is retained.
+There is one shared recovery engine for setup failure and the `restore` command.
+New health observation uses Android 9 process/foreground records and fresh log
+entries, without clearing logs. Three stable samples span roughly two seconds;
+startup observation is bounded to 12 seconds, with individual read timeouts.
+This detects some immediate failures; it does not prove long-term reliability.
 
-Guide Open Headunit's visible onboarding and USB permissions. Then have the owner
-disconnect the laptop, set **Host mode**, and attach the phone. Test actual image,
-audio, touch, microphone, normal car controls, and reboot persistence with the owner.
-Use available screen inspection to help with onboarding when practical; leave
-authorization prompts to the person. Do not repeatedly send connect commands.
+### Permission pause
 
-Check that the large Android Auto card opens OpenHU, the small duplicate and
-launcher/test entries are absent, and factory Home returns to the launcher.
-The owner's video-recording USB port worked; the ordinary port remained unstable.
-Microphone recognition remains unresolved and must not be reported as fixed.
-See [launcher details](launcher.md) for the actual build and live-test limits.
+Exit **3**, `status=waiting_for_permissions`, is a deliberate pause. Tell the
+owner which **car** prompt is visible, have them accept it, then rerun the same
+`setup --reboot-check --json` command. The journal still owns any receiver
+installed before the pause. Do not replace the backup or switch to Host.
 
-Report the tool paths, compatibility result, changed settings, backup location,
-and outcome of the phone test. Separate read-back results from owner observations.
-If interrupted, reconnect in Device mode and run restore using the saved cycle.
-Wireless remains outside the supported workflow.
+The CLI recognizes standard Android runtime permission activities. An app's own
+onboarding usually remains inside OpenHU and can pass the UI health check;
+complete it visibly anyway. An unrecognized blocking system/app screen may be
+reported as a health failure. Inspect it, rather than cycling launches or calling
+it an app crash without logs. Use [the prompt table](car-menu.md#prompts-and-which-screen-to-use).
+
+### Failure or interruption
+
+Exit **2** can contain a failed stage and nested `recovery` result. Recovery may
+have succeeded even though setup correctly still reports failure. Do not call it
+a completed install. If recovery is incomplete or USB disappeared, retain the
+journal, reconnect in Device mode and run `restore`. Do not automatically start
+a fresh install after rollback; first diagnose the failed stage. Exit **130**
+means an interruption outside the staged failure handler; also inspect status.
+[Recovery procedure, partial results and lock handling](recovery.md).
+
+## 7. Handoff and report
+
+After `next_action=phone_handoff`, have the owner verify the large Android Auto
+card, Home return, absent duplicate icons and their usual native controls. Then
+ask for the physical laptop-disconnect/Host/phone sequence. Phone USB debugging
+is not needed. The phone connects directly to the car, not through the laptop.
+
+The video-recording port worked on the reference car. The ordinary port still
+failed after about 10–15 seconds. Do not claim CarAuto disable alone explains all
+USB failures. Guide phone Android Auto prompts and car USB-access prompts. Maps,
+sound, touch, Home and reconnect need observation with the phone connected.
+Microphone/Gemini remains unresolved; wireless is outside this qualified flow.
+OpenHU's optional Show toast messages switch is a manual setting, not part of
+installer ownership or restore.
+
+Report the interpreter/ADB paths, compatibility result, changed stages, backup
+location, Android reboot evidence and the owner's phone/native-control results.
+Keep read-back, observed UI, owner reports and untested items distinct. Do not
+claim a full ignition cycle, all vehicle functions, or the new unified workflow
+has been live-qualified based on earlier component tests.
+
+USB supervision stops when the laptop is unplugged. A launcher failure while
+still in Device mode can be diagnosed through authorized USB if Android/ADB is
+responsive. The route back to Device from Host with an unusable launcher has not
+been tested. Explain that boundary before representing this as unattended rescue.

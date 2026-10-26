@@ -93,16 +93,66 @@ is available. Do not turn on wireless ADB for this workflow.
 
 ## Switch to Host for the phone
 
-After the agent or setup command finishes:
+After setup, its Android reboot check and the laptop-side checks finish:
 
 1. Disconnect the laptop from the car.
 2. Return to **Phone → `*#*#888` → Call → `1111`** if the factory menu was closed.
 3. Open **`开发模式`** and unlock that page if prompted, as described above.
 4. Tap the USB-role toggle until it displays **`Host模式`**.
-5. Open Open Headunit, choose USB, and connect the phone directly to the car.
+5. Open Open Headunit, choose USB, and connect the phone directly to the car
+   using the video-recording USB port that worked in the reference tests.
 
 For restore or later ADB work, disconnect the phone and change the role back to
 **`Device模式`** before connecting the laptop.
+
+## Cables, ports and the three connection phases
+
+| When | Cable connection | Role shown on the car | Phone/laptop state |
+| --- | --- | --- | --- |
+| Prepare/install/reboot-check | Laptop directly to the car by a suitable USB data cable | Device模式 (`OTG_MODE=1`) | Phone disconnected from car; avoid other ADB phones on laptop |
+| Project Android Auto | Phone directly to car by its USB data cable | Host模式 (`OTG_MODE=2`) | Laptop unplugged; phone unlocked for setup |
+| Return for restore | Unplug phone, select Device, connect laptop again | Device模式 | Keep the original local recovery folder |
+
+The phone connection worked on the **video-recording USB port**. The ordinary
+port kept reconnecting, sometimes after 10–15 seconds, even when the same cable
+worked on the recording port. That is a reference-car result, not a general
+explanation of what is wrong with another unit's port. No complete physical port
+map, port labels/photos or final laptop-cable connector inventory was saved.
+Ask the owner to identify their connectors when needed; do not invent positions
+such as “left port” or assume an A-to-A/A-to-C cable from the name of the car.
+Use a suitable cable that carries data, not only charge, and a direct connection.
+
+Wi-Fi is not needed for this USB ADB workflow. Network ADB is not enabled. The
+phone may still need its usual internet access for Maps and online assistants.
+The phone does not need developer mode, a headunit server or USB debugging.
+Those were diagnostic experiments during earlier wireless troubleshooting, not
+steps in the working wired setup.
+
+## Prompts and which screen to use
+
+| What appears | Where | What the person does / agent verifies |
+| --- | --- | --- |
+| Factory numeric PIN | Car | Enter the documented gate's code; outer 1111 and development default 3821 are distinct |
+| Enable USB debugging confirmation | Car Android settings | Enable it for the laptop setup |
+| Allow USB debugging / computer fingerprint | Car, after laptop connection | Accept this trusted laptop; optional “Always allow” only for that computer. Agent checks authorized USB, not merely device detection |
+| Python/driver installer approval | Laptop | Approve the prepared trusted installer if the OS requires it; agent finishes and runs the installed tool |
+| Open Headunit onboarding | Car | Choose USB, right-hand drive and landscape. Reference choices: about 10 inches, 180 DPI, phone GPS |
+| Open Headunit runtime permissions | Car | Read and allow the requested access. If CLI pauses with exit 3, accept the visible permission and rerun the same setup command in Device mode |
+| USB device/access or always-use app prompt | Car, after phone connection in Host | Choose Open Headunit and allow access; select its always-use option if offered |
+| Android Auto setup / phone permissions | Android phone | Unlock phone, review and accept its AA prompts; phone debugging is unnecessary |
+| Routine connection/disconnection popup | Car receiver | Optional OpenHU Settings → General → Show toast messages → Off → Save; this manual preference is outside CLI restore |
+
+These are prompt purposes, not verbatim captures of every dialog. Wording varies
+by phone/software; there are no saved screenshots of every onboarding/USB
+permission prompt. The agent should inspect a different screen, not fabricate a
+button or silently grant permissions. A repeated disappearing USB prompt can be
+a connection reset; check the role, cable and recording port as well as app access.
+
+Keep the laptop connected in Device mode until the CLI and Android reboot check
+are complete. Do not keep toggling modes to restore the agent's access: unplug
+the phone, deliberately select Device, then reconnect the laptop. If the launcher
+is unusable while in Host, the emergency path back to Device is **unverified**.
+See [recovery.md](recovery.md) for the boundary.
 
 ## Chinese label reference
 

@@ -42,7 +42,7 @@ Only CarAuto is disabled; vehicle/camera/climate/SystemUI services are not disab
 ```sh
 python3 prepare.py --json
 python3 oshan_x7.py check --json
-python3 oshan_x7.py setup --json
+python3 oshan_x7.py setup --reboot-check --json
 python3 oshan_x7.py status --json
 python3 oshan_x7.py restore --json
 ```
@@ -54,8 +54,10 @@ needed; Python installation is handled by the agent using the
 
 `check` and `status` are read-only on the car. `setup` installs the pinned receiver
 if absent, disables `com.eryanet.vlink`, saves the receiver's fullscreen preference,
-installs the tested launcher update, and opens the receiver. `restore` reverses
-that setup cycle, including its owned launcher update.
+installs the tested launcher update, and verifies Home/receiver health between
+stages. With `--reboot-check`, it verifies a normal Android reboot before the
+phone handoff. `restore` uses the same recovery engine as a failed setup,
+reversing changes owned by that cycle.
 
 | Option | When to use it |
 | --- | --- |
@@ -64,7 +66,8 @@ that setup cycle, including its owned launcher update.
 | `--serial YOUR_CAR_USB_SERIAL` | More than one USB device is attached. |
 | `--state-dir .oshan-x7-next` | Keep a new setup cycle separate after a completed restore. Use the same value for its later restore. |
 | `setup --apk /path/to/file.apk` | Use a previously downloaded official 3.5.0 APK. The fixed size/hash checks still apply. |
-| `--json` | One stdout JSON object for agents; exit 0 = success, 2 = refusal/error, 130 = interruption. |
+| `setup --reboot-check` | Verify a normal Android reboot, saved state and Home/receiver health before phone handoff. Repeating a completed check does not reboot again. |
+| `--json` | One stdout JSON object; exit 0 = success, 2 = refusal/error, 3 = visible permission pending, 130 = interruption outside the staged handler. |
 
 The CLI finds working ADB installations automatically. Preparation keeps newly
 downloaded Platform Tools inside `.oshan-x7/tools/`, including supporting DLLs and
@@ -99,45 +102,49 @@ The workflow never enables network ADB. If it was enabled in earlier independent
 debugging, arrange USB access and return to USB-only debugging separately using
 Android's official guidance. Running this tool does not clear that earlier state.
 
+## Machine-readable results
+
+`check` applies the strict setup checks. `status` uses recovery inspection and
+can succeed while `setup_compatible=false`; **do not use that as permission to
+run setup**. `recovery_eligible` means only the critical identity gates matched.
+Each remaining component still needs its own checks before a write.
+`compatible` on a recovery/status report refers to those recovery identity
+gates, while `setup_compatible` refers to the full setup configuration.
+
+| Field/status | Meaning and next step |
+| --- | --- |
+| `mismatches` | Failed mandatory gates; stop setup, inspect exact values |
+| `component_issues` | Receiver/root/preferences/boot or required-app issues; recovery evaluates each independently |
+| `backup_phase`, `failed_stage` | Saved progress and setup failure location, when a journal exists |
+| `waiting_for_permissions` | Exit 3; owner accepts visible car prompt, then rerun same setup command |
+| `configured` / `already_configured` | Configured values read back; projection remains untested |
+| `android_reboot_verified` | This cycle completed the CLI's normal Android reboot check; historical evidence, not an ignition-cycle claim |
+| `rerun_setup_with_reboot_check` | Keep laptop in Device mode and add the reboot check |
+| `phone_handoff` | Finish visible onboarding/native UI checks, disconnect laptop, select Host and connect phone |
+| `recovery` | Nested result after setup failure; inspect its status, errors and next action even though setup exits with an error |
+| `recovery_required` / `recovery_errors` | Some recovery is blocked or interrupted; preserve state, resolve reported issue, rerun restore |
+| `restored` / `already_restored` | This cycle's owned mutations recovered; preexisting installs/settings are kept |
+| `projection_tested=false` | CLI cannot certify real phone projection, audio, touch or native controls |
+
+A configured no-op reads the current state but does not relaunch apps or repeat
+historical health checks. Re-run checks and obtain actual observations when
+investigating a new failure. No command installs a background watcher on the car.
+
 ## Backups and recovery
 
-Before the first device write, setup saves the original CarAuto enabled state,
-per-app fullscreen value, receiver ownership, and operation journal to
-`.oshan-x7/devices/…/backup.json`. A copy of the original SystemUI preferences XML
-is retained alongside it. New cycles also save original launcher identity and,
-when installing it, the verified factory and reconstructed APKs alongside the
-journal. Keep this folder; it can contain device identifiers.
-All private state, downloaded tools, and APKs are ignored by Git.
+The private state directory contains original CarAuto/receiver/fullscreen/launcher
+state, a SystemUI preference copy, the original factory and reconstructed launcher
+APKs when needed, and a durable operation journal. An incomplete entry is saved
+before each device action. Stage completion includes verification evidence;
+failed actions retain their error and failed stage. The original snapshot is not
+replaced during a resume or rollback.
 
-Reconnect the laptop in **Device** mode and run `restore` with the same ADB options
-and state directory. Restore:
+Use **one** `restore` command with this same directory and ADB options. It reverses
+only owned changes, rolls back the launcher before removing a newly installed
+receiver, and preserves preexisting apps. Full procedure, missing-root/broken-app
+recovery, legacy ownership, interrupted restores and stale locks are in
+[recovery.md](recovery.md). Unknown firmware or launcher identity still blocks
+writes. A broken receiver does not itself prevent a known owned launcher rollback.
 
-- Removes the modified launcher **only if this journal installed it over the
-  factory base**. Android restores the untouched system APK; launcher data is
-  retained. A preexisting exact update is kept. An uncertain completed install
-  or interrupted rollback is resolved by exact current APK/UID/hash checks.
-- Returns CarAuto to its exact original enabled state.
-- Restores the original per-app layout behavior. An originally absent key becomes
-  an explicit `-1`, which invokes the factory-default behavior; the entire SystemUI
-  file is not overwritten.
-- Removes Open Headunit only when this setup cycle installed it. Removing a newly
-  installed receiver also removes its generated app data. A preexisting receiver
-  and its settings are retained.
-
-Repeated setup is a no-op after a completed matching setup. Repeated restore is
-a no-op after a completed restore. A connection loss retains the journal: run
-restore after reconnecting rather than retrying raw changes. Restore can itself
-be retried after an interruption.
-
-Backups from v0.1 remain usable. Restoring one retains its original AA-only
-scope. Running v0.2 setup on a completed v0.1 cycle adds the launcher step while
-preserving the original CarAuto/layout/receiver baseline. A matching launcher
-already present at upgrade time is recorded as preexisting. Use v0.2 or later
-for restore after installing this launcher; the old stock-only checker cannot
-recognize the new update. [Full launcher and patch details](launcher.md).
-
-Firmware or receiver replacement can cause restore's compatibility checks to
-refuse writes; preserve the backup for diagnosis. After a completed restore, use
-a new `--state-dir` for another cycle. If `operation.lock` remains after a computer
-crash, establish that no setup/restore process is running before removing only
-that lock. Never delete the original backup to silence an error.
+The complete v0.3 staged setup/recovery/reboot workflow is tested offline, not yet
+through a full live cycle. [Evidence](verified-findings.md) · [Test checklist](testing.md).

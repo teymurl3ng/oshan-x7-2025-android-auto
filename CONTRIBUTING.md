@@ -29,3 +29,11 @@ already present before setup must never be claimed or removed by a new cycle.
 
 Run `python3 -m unittest discover -s tests -v` for code changes. Tests must exercise
 failure paths and the limits on device mutations as well as successful setup.
+
+For staged workflow changes, keep automatic failure recovery and explicit restore
+on the same engine. Test lost USB before/after uncertain writes, disabled or
+unknown receiver identity, lost root, UI/permission pauses and partial restores.
+Never report full recovery while a step is blocked. Preserve component ownership
+and strict setup gates; recovery eligibility is a separate decision. Use the
+[evidence table](docs/verified-findings.md) and [live checklist](docs/testing.md)
+when distinguishing simulated results from car qualification.

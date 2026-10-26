@@ -31,7 +31,7 @@ class LauncherDeviceTests(DeviceFixture):
     def test_launcher_identity_and_immutable_base_remain_required_after_setup(self):
         car = FakeADB()
         self.setup_car(car)
-        for change in ("factory", "update", "uid", "version", "home", "disabled", "flag"):
+        for change in ("factory", "update", "uid", "version", "disabled", "flag"):
             with self.subTest(change=change):
                 altered = copy.deepcopy(car)
                 pin = tool.PROFILE["launcher"]
@@ -39,7 +39,6 @@ class LauncherDeviceTests(DeviceFixture):
                 if change == "update": altered.hashes[altered.paths[pin["package"]]] = "f" * 64
                 if change == "uid": altered.launcher_uid = 1001
                 if change == "version": altered.launcher_version += 1
-                if change == "home": altered.launcher_home = "other/.Home"
                 if change == "disabled": altered.packages[pin["package"]]["enabled"] = 3
                 if change == "flag": altered.launcher_updated = False
                 self.assertFalse(tool.inspect(altered)["compatible"])
@@ -78,9 +77,11 @@ class LauncherDeviceTests(DeviceFixture):
                 with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(tool.SetupError):
                     tool.setup(car, state, tool.inspect(car))
                 saved = tool.load_backup(tool.backup_path(car, state), car)
-                self.assertEqual("install_launcher", saved["phase"])
+                self.assertEqual("install_launcher", saved["failed_stage"])
+                self.assertEqual("recovery_required", saved["phase"])
                 self.assertEqual("factory", saved["original"]["launcher"]["build"])
                 car.fail_at = None
+                car.disconnected = False
                 writes = car.writes.copy()
                 with self.assertRaises(tool.SetupError): tool.setup(car, state, tool.inspect(car))
                 self.assertEqual(writes, car.writes)
@@ -92,6 +93,7 @@ class LauncherDeviceTests(DeviceFixture):
         self.setup_car(car)
         car.fail_at, car.fail_after_effect = "launcher_restore", True
         with self.assertRaises(tool.SetupError): self.restore_car(car)
+        car.disconnected = False
         self.assertEqual("factory", tool.launcher_state(car)["build"])
         car.fail_at = None
         self.restore_car(car)

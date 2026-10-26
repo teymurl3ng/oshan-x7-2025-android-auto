@@ -19,10 +19,11 @@ import time
 import urllib.request
 import xml.etree.ElementTree as ET
 
+import health_checks as health
 from prepare import find_adb
 from launcher_patch import apply as apply_launcher_patch, PatchError
 
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 ROOT = Path(__file__).resolve().parent
 PROFILE_PATH = ROOT / "profiles" / "f202-mca-rhd-20241022.json"
 CARAUTO = "com.eryanet.vlink"
@@ -38,6 +39,14 @@ ENABLE_COMMANDS = {0: "default-state", 1: "enable", 2: "disable",
 
 class SetupError(Exception):
     """A refused operation or an operation needing user attention."""
+
+    def __init__(self, message, **details):
+        super().__init__(message)
+        self.details = details
+
+
+class NeedsPermissions(SetupError):
+    """A visible permission prompt requires a person, not a rollback."""
 
 
 def now():
@@ -112,12 +121,12 @@ class ADB:
             raise SetupError(f"ADB command failed: {detail}")
         return result
 
-    def shell(self, *args, root=False, allow_failure=False):
+    def shell(self, *args, root=False, allow_failure=False, timeout=30):
         tokens = (["su", "0"] if root else []) + list(args)
-        return self.run("shell", shlex.join(tokens), allow_failure=allow_failure).stdout.strip()
+        return self.run("shell", shlex.join(tokens), allow_failure=allow_failure, timeout=timeout).stdout.strip()
 
-    def select_usb(self):
-        output = self.run("devices", "-l", target=False).stdout
+    def select_usb(self, timeout=30):
+        output = self.run("devices", "-l", target=False, timeout=timeout).stdout
         entries = []
         for line in output.splitlines():
             parts = line.split()
@@ -241,11 +250,23 @@ def launcher_state(adb, check_home=True):
             "version_code": pin["version_code"], "updated_system_app": updated, "home": home}
 
 
+def receiver_state(adb):
+    state = package(adb, RECEIVER)
+    state["verified"] = not state["installed"]
+    if state["installed"]:
+        state["sha256"] = remote_hash(adb, apk_path(adb, RECEIVER))
+        pin = PROFILE["receiver"]
+        state["verified"] = (state.get("version_code") == pin["version_code"] and
+                             state.get("version_name") == pin["version_name"] and
+                             state["sha256"] == pin["sha256"])
+    return state
+
+
 def inspect(adb, recovery=False):
-    """Read only: every listed mismatch prevents setup AND restore writes."""
+    """Read only. Recovery keeps identity gates but reports component failures separately."""
     adb.select_usb()
     props = parse_properties(adb.shell("getprop"))
-    failures = []
+    failures, issues = [], []
     for key, expected in PROFILE["properties"].items():
         if props.get(key) != expected:
             failures.append(f"{key}: expected {expected!r}, got {props.get(key)!r}")
@@ -253,52 +274,85 @@ def inspect(adb, recovery=False):
     size = re.search(r"Physical size:\s*(\d+x\d+)", size_text)
     if not size or size[1] != PROFILE["physical_size"]:
         failures.append("Physical display must be 1920x720.")
-    if re.search(r"Override size:", size_text):
+    if "Override size:" in size_text:
         failures.append("An overridden display size is unsupported; restore factory size first.")
-    # Reject unknown firmware before attempting root or reading private preferences.
+    if props.get("OTG_MODE") != "1":
+        failures.append("Select USB Device mode for the laptop before setup or restore.")
+    # Reject unknown firmware before root/private preference reads.
     if failures:
-        return {"compatible": False, "profile": PROFILE["id"], "mismatches": failures}
+        return {"compatible": False, "setup_compatible": False, "recovery_eligible": False,
+                "profile": PROFILE["id"], "mismatches": failures}
     if adb.shell("am", "get-current-user") != "0":
         failures.append("Android user 0 must be the current user.")
-    if adb.shell("getprop", "sys.boot_completed") != "1":
-        failures.append("Wait for Android to finish booting.")
+    booted = adb.shell("getprop", "sys.boot_completed") == "1"
+    if not booted:
+        issues.append("Android has not completed booting.")
+    states = {}
     for name in PROFILE["required_packages"]:
-        state = package(adb, name)
-        if not state["installed"]:
-            failures.append(f"Required factory package is missing for user 0: {name}")
-        elif name != CARAUTO and state["enabled"] not in (0, 1):
-            failures.append(f"Required factory package is disabled for user 0: {name}")
+        states[name] = package(adb, name)
+        if not states[name]["installed"]:
+            issues.append(f"Required factory package is missing for user 0: {name}")
+        elif name != CARAUTO and states[name]["enabled"] not in (0, 1):
+            issues.append(f"Required factory package is disabled for user 0: {name}")
     try:
         launcher = launcher_state(adb, check_home=not recovery)
+        if recovery and launcher["home"] not in (PROFILE["launcher"]["home"],
+                PROFILE["launcher"]["package"] + "/com.chinatsp.launcher.MainAct"):
+            issues.append("Unexpected default HOME activity; setup is not compatible.")
     except SetupError as exc:
         failures.append(str(exc))
     if failures:
-        return {"compatible": False, "profile": PROFILE["id"], "mismatches": failures}
-    if not re.search(r"\buid=0\b", adb.shell("id", root=True)):
-        raise SetupError("The tested firmware's existing 'su 0' access is unavailable. Do not root or flash it.")
-    xml = adb.shell("cat", PREFS, root=True)
-    layout = parse_layout(xml)
-    receiver = package(adb, RECEIVER)
-    if receiver["installed"]:
-        path = apk_path(adb, RECEIVER)
-        receiver["sha256"] = remote_hash(adb, path)
-        pinned = PROFILE["receiver"]
-        if (receiver.get("version_code") != pinned["version_code"] or
-                receiver.get("version_name") != pinned["version_name"] or
-                receiver["sha256"] != pinned["sha256"] or receiver["enabled"] not in (0, 1)):
-            failures.append("Existing Open Headunit is not the pinned, enabled 3.5.0 APK. "
-                            "This tool will not replace or downgrade it.")
-    return {"compatible": not failures, "profile": PROFILE["id"], "mismatches": failures,
-            "carauto": package(adb, CARAUTO), "receiver": receiver,
-            "fullscreen_value": layout, "usb_mode": props.get("OTG_MODE", "unknown"),
-            "firmware": props["ro.build.display.id"], "root": "su 0",
-            "launcher": launcher,
-            "_prefs_xml": xml}
+        return {"compatible": False, "setup_compatible": False, "recovery_eligible": False,
+                "profile": PROFILE["id"], "mismatches": failures}
+    root_available, prefs_readable, xml, layout = False, False, None, None
+    try:
+        root_available = bool(re.search(r"\buid=0\b", adb.shell("id", root=True)))
+        if not root_available:
+            raise SetupError("Existing 'su 0' access is unavailable. Do not root or flash the car.")
+        xml = adb.shell("cat", PREFS, root=True)
+        layout = parse_layout(xml)
+        prefs_readable = True
+    except SetupError as exc:
+        issues.append(str(exc))
+    try:
+        receiver = receiver_state(adb)
+        if not receiver["verified"] or (receiver["installed"] and receiver["enabled"] not in (0, 1)):
+            issues.append("Existing Open Headunit is not the pinned, enabled 3.5.0 APK. "
+                          "It will not be replaced or downgraded.")
+    except SetupError as exc:
+        receiver = {"installed": None, "verified": False}
+        issues.append(str(exc))
+    return {"compatible": not failures and (recovery or not issues),
+            "setup_compatible": not failures and not issues,
+            "recovery_eligible": not failures, "profile": PROFILE["id"],
+            "mismatches": failures + ([] if recovery else issues), "component_issues": issues,
+            "carauto": states[CARAUTO], "receiver": receiver,
+            "fullscreen_value": layout, "prefs_readable": prefs_readable,
+            "usb_mode": props.get("OTG_MODE", "unknown"), "boot_completed": booted,
+            "firmware": props["ro.build.display.id"], "root_available": root_available,
+            "root": "su 0" if root_available else None, "launcher": launcher, "_prefs_xml": xml}
 
 
 def require_compatible(report):
     if not report["compatible"]:
-        raise SetupError("Unsupported configuration; no changes made. " + "; ".join(report["mismatches"]))
+        raise SetupError("Configuration refused. " + "; ".join(report["mismatches"]))
+
+
+def healthy_launch(adb, component, baseline=None):
+    try:
+        return health.launch(adb, component, baseline,
+                             exact_activity=component == PROFILE["launcher"]["home"])
+    except health.PermissionsPending as exc:
+        raise NeedsPermissions(str(exc)) from exc
+    except health.HealthError as exc:
+        raise SetupError(str(exc)) from exc
+
+
+def healthy_systemui(adb, baseline):
+    try:
+        return health.observe(adb, SYSTEMUI, baseline)
+    except health.HealthError as exc:
+        raise SetupError(str(exc)) from exc
 
 
 def verify_apk(path):
@@ -466,9 +520,19 @@ def operation(path, journal, name, action):
     journal["operations"].append(entry)
     journal["phase"] = name
     write_json(path, journal)
-    action()
+    try:
+        verification = action()
+    except (Exception, KeyboardInterrupt) as exc:
+        entry["error"] = str(exc) or type(exc).__name__
+        entry["failed_at"] = now()
+        write_json(path, journal)
+        raise
     entry["complete"] = True
+    entry["verified_at"] = now()
+    if verification is not None:
+        entry["verification"] = verification
     write_json(path, journal)
+    return verification
 
 
 def set_enabled(adb, value):
@@ -534,7 +598,156 @@ def restore_launcher(adb):
         raise SetupError("Factory launcher rollback did not verify. Keep USB connected and the journal.")
 
 
-def setup(adb, state_dir, report, supplied_apk=None):
+def touched(journal, name):
+    return any(e["name"] == name for e in journal["operations"])
+
+
+def recovery_report(adb):
+    report = inspect(adb, recovery=True)
+    require_compatible(report)
+    if report["usb_mode"] != "1":
+        raise SetupError("Select USB Device mode for the laptop before setup or restore.")
+    return report
+
+
+def _restore_locked(adb, path, journal):
+    """One engine for explicit restore and automatic recovery; caller holds the lock."""
+    report = recovery_report(adb)
+    if journal["restored"]:
+        return {"status": "already_restored", "device_writes": False, "backup": str(path)}
+    original = journal["original"]
+    owns_launcher = (journal["schema"] == 2 and original["launcher"]["build"] == "factory" and
+                     touched(journal, "install_launcher"))
+    homes = (PROFILE["launcher"]["home"], PROFILE["launcher"]["package"] + "/com.chinatsp.launcher.MainAct")
+    if report["launcher"]["home"] not in homes and not owns_launcher:
+        raise SetupError("Unexpected HOME and no owned launcher update to recover; refusing writes.")
+    results, errors = {}, {}
+
+    def step(name, action):
+        try:
+            # Identity and transport are checked again before each independent recovery step.
+            recovery_report(adb)
+            results[name] = operation(path, journal, name, action)
+            return True
+        except (SetupError, OSError, ValueError) as exc:
+            errors[name] = str(exc)
+            journal["recovery_errors"] = errors.copy()
+            write_json(path, journal)
+            return False
+
+    home_ok = True
+    if owns_launcher:
+        home_ok = step("restore_launcher", lambda: restore_launcher(adb))
+    if home_ok:
+        home_ok = step("verify_restored_home", lambda: healthy_launch(adb, PROFILE["launcher"]["home"]))
+
+    if touched(journal, "fullscreen"):
+        def restore_layout():
+            current = recovery_report(adb)
+            if not current["root_available"] or not current["prefs_readable"]:
+                raise SetupError("Fullscreen recovery needs existing root and readable factory preferences.")
+            wanted = original["fullscreen_value"]
+            if current["fullscreen_value"] == wanted or (wanted is None and current["fullscreen_value"] == -1):
+                return {"unchanged": True}
+            baseline = health.logs(adb)
+            broadcast_layout(adb, -1 if wanted is None else wanted)
+            refresh(adb)
+            return healthy_systemui(adb, baseline)
+        step("restore_fullscreen", restore_layout)
+
+    carauto_ok = True
+    if touched(journal, "disable_carauto"):
+        def restore_carauto():
+            current = recovery_report(adb)
+            if not current["carauto"]["installed"]:
+                raise SetupError("CarAuto is missing; this restore cannot recreate factory packages.")
+            wanted = original["carauto"]["enabled"]
+            if current["carauto"]["enabled"] == wanted:
+                return {"unchanged": True}
+            if not current["root_available"]:
+                raise SetupError("CarAuto recovery needs the firmware's existing root access.")
+            baseline = health.logs(adb)
+            set_enabled(adb, wanted)
+            return healthy_systemui(adb, baseline)
+        carauto_ok = step("restore_carauto", restore_carauto)
+
+    if not original["receiver"]["installed"] and touched(journal, "install_receiver"):
+        def remove_receiver():
+            if not home_ok or not carauto_ok:
+                raise SetupError("Receiver retained until Home and CarAuto recovery verify successfully.")
+            current = receiver_state(adb)
+            if not current["installed"]:
+                return {"unchanged": True}
+            if not current["verified"]:
+                raise SetupError("Receiver identity changed; refusing to remove an unknown APK.")
+            if not recovery_report(adb)["root_available"]:
+                raise SetupError("Receiver removal needs the firmware's existing root access.")
+            output = adb.shell("pm", "uninstall", "--user", "0", RECEIVER, root=True)
+            if output != "Success" or package(adb, RECEIVER)["installed"]:
+                raise SetupError("Could not remove the receiver installed by this setup.")
+            return {"installed": False}
+        step("remove_receiver", remove_receiver)
+    journal["recovery_errors"] = errors
+    journal["phase"] = "recovery_required" if errors else "restored"
+    journal["restored"] = not errors
+    if not errors:
+        journal["restored_at"] = now()
+    write_json(path, journal)
+    result = {"status": journal["phase"], "backup": str(path), "steps": results, "errors": errors,
+              "component_issues": report.get("component_issues", []),
+              "next_action": "reconnect_usb_and_restore" if errors else "restore_complete",
+              "note": "Only journal-owned changes are reversed. An absent fullscreen key uses -1 "
+                      "if it was changed. Preexisting apps and their settings are retained."}
+    if errors:
+        raise SetupError("Recovery is incomplete; preserve the journal and rerun restore after resolving "
+                         "the reported problems.", recovery=result)
+    return result
+
+
+def reboot_check(adb):
+    """Reboot Android once, keep USB supervision, then verify the configured state/UI."""
+    previous = adb.shell("cat", "/proc/sys/kernel/random/boot_id")
+    boot_pattern = r"[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}"
+    if not re.fullmatch(boot_pattern, previous):
+        raise SetupError("Cannot establish Android boot identity; reboot verification refused.")
+    adb.run("reboot")
+    deadline = time.monotonic() + 120
+    def probe_timeout():
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise SetupError("Reboot observation deadline reached.")
+        return min(3, remaining)
+
+    while time.monotonic() < deadline:
+        time.sleep(min(2, deadline - time.monotonic()))
+        try:
+            adb.select_usb(timeout=probe_timeout())
+            current_boot = adb.shell("cat", "/proc/sys/kernel/random/boot_id", timeout=probe_timeout())
+            changed = bool(re.fullmatch(boot_pattern, current_boot)) and current_boot != previous
+            if changed and adb.shell("getprop", "sys.boot_completed", timeout=probe_timeout()) == "1":
+                break
+        except SetupError:
+            continue
+    else:
+        raise SetupError("Android did not return over USB within 120 seconds. Reconnect in Device mode "
+                         "and run restore. USB recovery requires responsive Android/ADB.")
+    after = inspect(adb)
+    require_compatible(after)
+    if not configured(after) or after["usb_mode"] != "1":
+        raise SetupError("Configured state did not persist after the Android reboot.")
+    home = healthy_launch(adb, PROFILE["launcher"]["home"])
+    receiver = healthy_launch(adb, MAIN_ACTIVITY)
+    return {"android_reboot_verified": True, "home": home, "receiver": receiver,
+            "ignition_cycle_tested": False}
+
+
+def configured(report):
+    return (report["compatible"] and report["carauto"]["enabled"] == 3 and
+            report["fullscreen_value"] == 0 and report["receiver"]["installed"] and
+            report["launcher"]["build"] == "openhu")
+
+
+def setup(adb, state_dir, report, supplied_apk=None, verify_reboot=False):
     require_compatible(report)
     if report["usb_mode"] != "1":
         raise SetupError("Select USB Device mode for the laptop before setup.")
@@ -544,26 +757,25 @@ def setup(adb, state_dir, report, supplied_apk=None):
         if journal and journal["restored"]:
             raise SetupError("This backup has already been restored. Keep it, and choose a new "
                              "--state-dir for a new setup cycle.")
-        if journal and journal["phase"] not in ("backed_up", "configured"):
+        if journal and journal["phase"] not in ("backed_up", "configured", "waiting_for_permissions"):
             raise SetupError("An earlier operation was interrupted. Run restore before starting again.")
-        if journal and journal["phase"] == "configured":
-            if (report["carauto"]["enabled"] == 3 and report["fullscreen_value"] == 0 and
+        already = bool(journal and journal["phase"] == "configured")
+        if already:
+            if configured(report):
+                if journal["schema"] == 1:
+                    journal["schema"] = 2
+                    journal["original"]["launcher"] = report["launcher"]
+                    journal["launcher_adopted_as_preexisting_at"] = now()
+                    write_json(path, journal)
+                if not verify_reboot or journal.get("android_reboot_verified"):
+                    return setup_result(path, journal, report, already=True)
+            elif journal["schema"] != 1 or report["launcher"]["build"] != "factory" or not (
+                    report["carauto"]["enabled"] == 3 and report["fullscreen_value"] == 0 and
                     report["receiver"]["installed"]):
-                if report["launcher"]["build"] == "openhu":
-                    if journal["schema"] == 1:
-                        journal["schema"] = 2
-                        journal["original"]["launcher"] = report["launcher"]
-                        journal["launcher_adopted_as_preexisting_at"] = now()
-                        write_json(path, journal)
-                    return {"status": "already_configured", "backup": str(path), "device_writes": False,
-                            "next": "Disconnect the laptop, select USB Host mode, and connect the phone."}
-                if journal["schema"] != 1:
-                    raise SetupError("Launcher changed after setup. Run restore before reapplying.")
-                # Extend a completed v0.1 cycle without losing its original AA
-                # settings or claiming ownership of a preexisting launcher.
-            else:
                 raise SetupError("Device settings changed after setup. Run restore before reapplying.")
-        # Obtain/verify the artifact before making a backup or writing to the car.
+            else:
+                already = False  # Extend a completed v0.1 AA-only cycle.
+        # Verify all artifacts before any device writes. A permission pause reuses this same baseline.
         apk = None if report["receiver"]["installed"] else obtain_apk(state_dir, supplied_apk)
         launcher_apk = (prepare_launcher(adb, path.parent)
                         if report["launcher"]["build"] == "factory" else None)
@@ -573,87 +785,97 @@ def setup(adb, state_dir, report, supplied_apk=None):
             journal["schema"] = 2
             journal["original"]["launcher"] = report["launcher"]
             journal["launcher_upgrade_at"] = now()
-            journal["phase"] = "backed_up"
             write_json(path, journal)
+        def stage(name, action):
+            # Downloads/owner prompts can take time. Never rely on an old setup report.
+            current = inspect(adb)
+            require_compatible(current)
+            if current["usb_mode"] != "1":
+                raise SetupError("Keep USB in Device mode until setup and its reboot check finish.")
+            return operation(path, journal, name, action)
+
         try:
-            if apk is not None:
-                operation(path, journal, "install_receiver", lambda: install(adb, apk))
-            if report["carauto"]["enabled"] != 3:
-                operation(path, journal, "disable_carauto", lambda: set_enabled(adb, 3))
-            if report["fullscreen_value"] != 0:
-                operation(path, journal, "fullscreen", lambda: broadcast_layout(adb, 0))
-            if launcher_apk is not None:
-                operation(path, journal, "install_launcher", lambda: install_launcher(adb, launcher_apk))
-                operation(path, journal, "open_launcher", lambda: adb.shell(
-                    "am", "start", "--user", "0", "-n", PROFILE["launcher"]["home"]))
-            # Launch once; all first-run grants and connection choices stay visible to the owner.
-            operation(path, journal, "open_receiver",
-                      lambda: adb.shell("am", "start", "--user", "0", "-n", MAIN_ACTIVITY))
-            operation(path, journal, "refresh_layout", lambda: refresh(adb))
+            if not already:
+                stage("verify_home_before",
+                          lambda: healthy_launch(adb, PROFILE["launcher"]["home"]))
+                if apk is not None:
+                    stage("install_receiver", lambda: install(adb, apk))
+                stage("verify_receiver", lambda: healthy_launch(adb, MAIN_ACTIVITY))
+                if report["carauto"]["enabled"] != 3:
+                    def disable_carauto():
+                        baseline = health.logs(adb)
+                        set_enabled(adb, 3)
+                        return healthy_systemui(adb, baseline)
+                    stage("disable_carauto", disable_carauto)
+                if report["fullscreen_value"] != 0:
+                    def fullscreen():
+                        baseline = health.logs(adb)
+                        broadcast_layout(adb, 0)
+                        refresh(adb)
+                        return healthy_systemui(adb, baseline)
+                    stage("fullscreen", fullscreen)
+                if launcher_apk is not None:
+                    def update_launcher():
+                        baseline = health.logs(adb)
+                        install_launcher(adb, launcher_apk)
+                        return healthy_launch(adb, PROFILE["launcher"]["home"], baseline)
+                    stage("install_launcher", update_launcher)
+                stage("open_receiver", lambda: healthy_launch(adb, MAIN_ACTIVITY))
             after = inspect(adb)
             require_compatible(after)
-            verified = (after["carauto"]["enabled"] == 3 and after["fullscreen_value"] == 0 and
-                        after["receiver"]["installed"] and after["launcher"]["build"] == "openhu")
-            if not verified:
-                raise SetupError("Final read-back failed. Run restore with the saved backup.")
+            if not configured(after):
+                raise SetupError("Final configured state did not pass read-back.")
+            if verify_reboot and not journal.get("android_reboot_verified"):
+                stage("verify_android_reboot", lambda: reboot_check(adb))
+                journal["android_reboot_verified"] = True
             journal["phase"] = "configured"
             journal["configured_at"] = now()
             journal["launcher_after"] = after["launcher"]
             write_json(path, journal)
-        except (Exception, KeyboardInterrupt):
-            # A dropped cable cannot be rolled back over a nonexistent connection. Preserve the
-            # write-ahead journal so restore can finish after USB access returns.
-            print(f"Setup interrupted. Backup retained: {path}. Reconnect and run restore.", file=sys.stderr)
-            raise
-    return {"status": "configured", "backup": str(path), "projection_tested": False,
-            "launcher": after["launcher"],
-            "next": ["Complete Open Headunit onboarding and choose USB; allow its requested permissions.",
-                     "Disconnect the laptop, select USB Host mode in factory settings, and connect the phone.",
-                     "Accept phone/USB prompts; verify picture, audio, touch, microphone, and factory controls."],
-            "note": "Small factory Home/Back overlays remain. Wireless is untested."}
+        except NeedsPermissions as exc:
+            journal["phase"] = "waiting_for_permissions"
+            journal["next_action"] = "accept_car_permission_then_rerun_setup"
+            write_json(path, journal)
+            return {"status": "waiting_for_permissions", "backup": str(path), "projection_tested": False,
+                    "next_action": journal["next_action"], "message": str(exc)}
+        except (Exception, KeyboardInterrupt) as exc:
+            journal["setup_error"] = str(exc) or type(exc).__name__
+            journal["failed_stage"] = journal["phase"]
+            journal["phase"] = "recovery_required"
+            write_json(path, journal)
+            try:
+                recovery = _restore_locked(adb, path, journal)
+            except (SetupError, OSError, ValueError) as recovery_error:
+                recovery = getattr(recovery_error, "details", {}).get("recovery", {
+                    "status": "recovery_required", "error": str(recovery_error),
+                    "next_action": "reconnect_usb_device_mode_then_restore", "backup": str(path)})
+                journal["automatic_recovery"] = recovery
+                write_json(path, journal)
+            raise SetupError("Setup failed: " + (str(exc) or type(exc).__name__),
+                             failed_stage=journal.get("failed_stage"), recovery=recovery) from exc
+    return setup_result(path, journal, after)
 
 
-def restore(adb, state_dir, report):
-    require_compatible(report)
-    if report["usb_mode"] != "1":
-        raise SetupError("Select USB Device mode for the laptop before restore.")
+def setup_result(path, journal, report, already=False):
+    rebooted = bool(journal.get("android_reboot_verified"))
+    return {"status": "already_configured" if already else "configured", "backup": str(path),
+            "device_writes": not already, "projection_tested": False,
+            "android_reboot_verified": rebooted, "launcher": report["launcher"],
+            "next_action": "phone_handoff" if rebooted else "rerun_setup_with_reboot_check",
+            "next": (["Complete onboarding/visible permissions on the car; choose USB and right-hand drive.",
+                      "Disconnect the laptop, select Host模式, and connect the phone to the recording USB port.",
+                      "Accept phone/USB prompts; check real Maps, sound, touch, large AA card, Home and native controls."]
+                     if rebooted else ["Keep the laptop connected in Device mode. Run setup --reboot-check."]),
+            "note": "Microphone recognition remains unresolved; wireless and cold ignition cycles are untested."}
+
+
+def restore(adb, state_dir, report=None):
+    # A fresh, component-aware recovery inspection is independent of a failed setup check.
+    adb.select_usb()
     path = backup_path(adb, state_dir)
     with exclusive(state_dir):
         journal = load_backup(path, adb)
-        if journal["restored"]:
-            return {"status": "already_restored", "device_writes": False, "backup": str(path)}
-        original = journal["original"]
-        owns_launcher = (journal["schema"] == 2 and original["launcher"]["build"] == "factory" and
-                         any(e["name"] == "install_launcher" for e in journal["operations"]))
-        if report["launcher"]["home"] not in (PROFILE["launcher"]["home"],
-                PROFILE["launcher"]["package"] + "/com.chinatsp.launcher.MainAct") and not owns_launcher:
-            raise SetupError("Unexpected HOME and no owned launcher update to recover; no restore writes are safe.")
-        if owns_launcher:
-            operation(path, journal, "restore_launcher", lambda: restore_launcher(adb))
-        wanted = original["fullscreen_value"]
-        # The verified factory API has no delete-key command. -1 has the same layout behavior
-        # as an originally absent key, without rewriting all of SystemUI's preferences.
-        wanted = -1 if wanted is None else wanted
-        operation(path, journal, "restore_fullscreen", lambda: broadcast_layout(adb, wanted))
-        operation(path, journal, "refresh_layout_restore", lambda: refresh(adb))
-        operation(path, journal, "restore_carauto",
-                  lambda: set_enabled(adb, original["carauto"]["enabled"]))
-        # Only remove the user app if THIS setup cycle could have installed it. Never uninstall
-        # a factory package or a receiver that was already present before setup.
-        installed_by_tool = any(e["name"] == "install_receiver" for e in journal["operations"])
-        if not original["receiver"]["installed"] and report["receiver"]["installed"] and installed_by_tool:
-            def remove_receiver():
-                adb.shell("pm", "uninstall", "--user", "0", RECEIVER, root=True)
-                if package(adb, RECEIVER)["installed"]:
-                    raise SetupError("Could not remove the receiver installed by this setup.")
-            operation(path, journal, "remove_receiver", remove_receiver)
-        journal["phase"] = "restored"
-        journal["restored"] = True
-        journal["restored_at"] = now()
-        write_json(path, journal)
-    return {"status": "restored", "backup": str(path),
-            "note": "Originally absent fullscreen key is restored as -1 (factory default behavior). "
-                    "Existing Open Headunit installs and their settings are retained."}
+        return _restore_locked(adb, path, journal)
 
 
 def public_report(report):
@@ -672,33 +894,51 @@ def parser():
     result.add_argument("--state-dir", type=Path, default=ROOT / ".oshan-x7",
                         help="Local private backup/cache directory; keep it for restore")
     result.add_argument("--apk", type=Path, help="Use an already downloaded pinned APK instead of downloading")
+    result.add_argument("--reboot-check", action="store_true",
+                        help="With setup, verify a normal Android reboot while USB stays connected")
     result.add_argument("--json", action="store_true", help="Emit one JSON object for agent/tool use")
     return result
 
 
 def main(argv=None):
     args = parser().parse_args(argv)
+    details = {}
     try:
         if not 1 <= args.adb_port <= 65535:
             raise SetupError("ADB port must be between 1 and 65535.")
         if args.apk and args.command != "setup":
             raise SetupError("--apk is only used by setup.")
+        if args.reboot_check and args.command != "setup":
+            raise SetupError("--reboot-check is only used by setup.")
         adb = ADB(args.adb, args.adb_port, args.serial)
         state_dir = args.state_dir.expanduser().resolve()
-        report = inspect(adb, recovery=args.command == "restore")
+        report = inspect(adb, recovery=args.command in ("restore", "status"))
         if args.command in ("check", "status"):
             result = public_report(report)
             result["device_writes"] = False
             result["projection_tested"] = False
-            if report["compatible"]:
+            if adb.serial:
                 path = backup_path(adb, state_dir)
                 result["backup_exists"] = path.exists()
                 if path.exists():
                     journal = load_backup(path, adb)
                     result["backup_phase"] = journal["phase"]
+                    result["failed_stage"] = journal.get("failed_stage")
+                    result["recovery_errors"] = journal.get("recovery_errors", {})
+                    result["android_reboot_verified"] = bool(journal.get("android_reboot_verified"))
+                    result["next_action"] = ("restore" if journal["phase"] not in
+                        {"configured", "restored", "waiting_for_permissions"} else
+                        {"configured": "phone_handoff" if journal.get("android_reboot_verified") else
+                         "rerun_setup_with_reboot_check", "restored": "restore_complete",
+                         "waiting_for_permissions": "accept_car_permission_then_rerun_setup"}[journal["phase"]])
+                if not report["compatible"]:
+                    result["next_action"] = "diagnose_identity_mismatch_no_writes"
+                elif args.command == "status" and report.get("component_issues"):
+                    result["next_action"] = "inspect_component_issues_and_restore_if_needed"
             code = 0 if report["compatible"] else 2
         elif args.command == "setup":
-            result, code = setup(adb, state_dir, report, args.apk), 0
+            result = setup(adb, state_dir, report, args.apk, args.reboot_check)
+            code = 3 if result["status"] == "waiting_for_permissions" else 0
         else:
             result, code = restore(adb, state_dir, report), 0
         if args.json:
@@ -710,10 +950,13 @@ def main(argv=None):
         message, code = "Interrupted. Reconnect by USB and run status/restore if setup had started.", 130
     except (SetupError, OSError, ValueError) as exc:
         message, code = str(exc), 2
+        details = getattr(exc, "details", {})
     if args.json:
-        print(json.dumps({"ok": False, "error": message}))
+        print(json.dumps({"ok": False, "error": message, **details}))
     else:
         print("Error: " + message, file=sys.stderr)
+        if details:
+            print(json.dumps(details, indent=2), file=sys.stderr)
     return code
 
 

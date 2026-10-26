@@ -1,69 +1,77 @@
-# Testing
+# Testing and qualification
 
-These are the checks I use for the scripts, followed by the car tests I still
-need to complete. I don't want a passing software test to be mistaken for a
-successful Android Auto session.
+Software tests, artifact checks and actual car behavior are different evidence.
+The v0.3 workflow has offline tests; its full live setup/restore cycle is pending.
 
-## Offline tests
-
-Run with Python 3.10 or later:
+## Offline checks
 
 ```sh
 python3 -m unittest discover -s tests -v
 ```
 
-The tests simulate ADB responses and local state. They exercise compatibility
-refusals, wrong/multiple transports, exact artifact checks, write-ahead backup,
-setup read-back, repeated runs, restore, and interrupted operations. Launcher
-cases cover both factory and exact update identities, an unchanged immutable
-base, default HOME/UID/version checks, ownership of preexisting updates, USB
-role refusals, legacy backup upgrade, disconnects before/after install and
-rollback, and refusing unknown builds. Binary-patch cases exercise bounded
-decompression, corrupt/truncated instructions, signed offsets, both artifact
-pins and cache verification. These are
-software checks, not a substitute for actual USB/projection testing.
+The suite runs without a car, network or real ADB. Its stateful simulator fails
+on unrecognized commands, records writes and supports failures before/after an
+uncertain mutation. Clocks are simulated for bounded health/reboot tests.
 
-Host preparation tests also exercise existing-tool reuse, private SDK extraction,
-invalid archive paths, and failed binary validation. The CI additionally downloads
-Google's real Platform Tools on each OS with Python 3.13 and runs only `adb version`.
-That network smoke test neither starts an ADB server nor accesses a car.
+| Area | Behaviors checked |
+| --- | --- |
+| Compatibility | Every firmware property, display/override, user/boot, factory base, active APK/UID/version/system flag/default Home, root, receiver identity |
+| Transport | USB descriptor required, unauthorized/offline/network/emulator rejected, explicit target and ADB server port, host-mode refusal |
+| Artifacts | Download bounds/checksum/cache, BSDIFF40 decompression/instructions/offsets/corruption, both launcher pins and factory pull |
+| Stages | Original backup and incomplete journal before first write, failed activity despite exit 0, live foreground/process requirements, fresh crash/ANR, PID restart, history/unrelated events ignored |
+| Permissions | Distinct pause/exit 3 before later stages, same backup and owned receiver retained across resume |
+| Automatic recovery | Launcher crash rollback through the same full restore engine, failed-stage reporting, no rollback writes on identity change, deferred recovery after real simulated transport loss |
+| Partial restore | Disabled exact receiver, unknown receiver kept, lost root, malformed preferences, independent eligible reversals, receiver retained when Home fails, retry without repeated launcher removal |
+| Ownership | Preexisting apps/settings kept, legacy AA journals/upgrade, absent fullscreen default behavior, setup/restore no-ops, corrupt journal/identity/lock refusals |
+| Reboot | New boot identity required, persisted state/UI checks, stalled boot failure/recovery, completed check does not reboot again |
+| Host preparation | Existing tools, private complete SDK extraction, traversal/link rejection, failed executable validation |
 
-## Completed launcher checks
+CI runs Python 3.10/3.13 on Linux, Windows and macOS. Python 3.13 jobs also fetch
+Google's real host tools and run only `adb version`; that smoke check does not
+start a server or access a car. A source-ZIP check verifies the ordinary download
+contains all code, docs and the patch without requiring Git metadata.
 
-The original launcher update passed installation, large-card/Home and native
-control checks, factory rollback/reinstall, a normal Android reboot, and a wired
-AA/Home test. The final menu-cleanup APK then passed installation/read-back,
-before/after-reboot icon checks, large-card/Home tests and owner control checks.
-The owner reports wired AA works on the video-recording USB port; the ordinary
-port still drops after 10–15 seconds. The latest phone answer did not separately
-enumerate audio/touch/popup checks. Microphone recognition remains unresolved.
+## Completed component tests on the car
 
-Local reconstruction from the original APK and bundled patch was compared byte
-for byte with the exact final APK tested on the car. No new APK was installed
-during the public installer integration work.
+The first launcher passed install/card/Home/native-control checks, factory
+rollback/reinstall, a normal Android reboot and wired AA/Home. The exact final
+menu-cleanup build passed install/hash/UID/HOME read-back, before/after-reboot icon
+checks, large-card/Home and owner native-control checks. The owner reports wired
+AA working on the recording USB port; the ordinary port remains unstable.
+Microphone recognition is unresolved. Final phone feedback did not separately
+list every sound/touch/popup check. [Full evidence](verified-findings.md).
 
-## Unified installer car test still pending
+Patch reconstruction was also compared byte for byte with the exact final APK.
+That is an offline artifact check, not a new installation on the car.
 
-The individual changes worked on my car, but I haven't run the new installer
-through its full setup-and-restore cycle there yet. This is the checklist for
-that test on the matching firmware:
+## Controlled v0.3 car cycle still needed
 
-1. Read-only check of identity, original enabled/layout states, and existing receiver.
-2. Setup with a verified APK; retain the original backup and journal.
-3. Repeat setup; confirm no additional device writes and the original backup unchanged.
-4. Confirm the large AA card opens OpenHU, Home returns correctly, and the small
-   duplicate/launcher menu entries are absent. Hand off to USB Host and check
-   real wired AA: image, audio, touch, voice and navigation. Record unresolved
-   voice input separately from successful projection.
-5. Access to factory Home/Back, camera, climate controls, and other usual functions
-   while parked. Do not operate vehicle systems through improvised ADB commands.
-6. Normal reboot and repeat wired test; separately identify any cold ignition test.
-7. Restore via USB Device mode; verify the exact factory launcher returns only
-   when this cycle installed the update, with launcher data retained. Confirm
-   original CarAuto/layout behavior and receiver ownership. Repeat restore and
-   confirm no further writes. A preexisting launcher update must be kept.
-8. Interrupted setup/restore recovery on a controlled test unit, if practical.
+Use only the exact supported firmware, while parked, with power and the private
+backup preserved. Keep the laptop in Device mode until its stages finish. Do not
+induce a firmware/boot failure merely to prove a recovery claim.
 
-If you're helping test, please say what the script read back and what you actually
-saw or heard on the car. Keep identifiers, APKs, network settings, and raw private
-backups out of public reports.
+1. Record read-only compatibility, original settings/apps and current ownership.
+   Qualify access back to Device mode before claiming any Host-mode rescue route.
+2. Run setup with `--reboot-check`. Confirm each stage's read-back and the actual
+   Android 9 health/permission observations. Record unexpected onboarding screens;
+   never silently bypass them or relabel an unrecognized screen as a crash.
+3. Complete visible permissions and resume the same command if paused. Check
+   the large card, Home, icon cleanup and usual native controls. Confirm reboot
+   state and health before laptop disconnection.
+4. Repeat completed setup: no device writes or changes to the original snapshot.
+5. Disconnect laptop, select Host, connect phone directly to the recording USB
+   port. Record real Maps, sound, touch, reconnect, card/Home and native-control
+   outcomes separately. Record unresolved microphone behavior honestly.
+6. Disconnect phone, select Device, reconnect laptop and run unified restore.
+   Confirm owned launcher returns to the exact factory base with data retained,
+   owned CarAuto/fullscreen restored, and only an owned new receiver removed.
+   Preexisting installs must remain. Repeat restore: no additional writes.
+7. On a suitable controlled unit, qualify recoverable app failures and cable-loss
+   resume without risking access to the factory menu. Confirm partial results
+   never claim full success and the journal survives. Stop if USB/Android becomes
+   inaccessible; this project has no qualified boot/firmware rescue.
+8. Record a cold ignition/power-off cycle separately if later tested. Do not infer
+   it from normal Android reboot success or conflate it with wireless qualification.
+
+Report CLI read-back versus what was seen/heard and the exact command/version.
+Do not publish APKs, serials, network settings or raw private backups.

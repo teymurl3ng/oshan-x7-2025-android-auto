@@ -1,124 +1,155 @@
 # Oshan X7 · Android Auto
 
-I got **wired Android Auto working in full screen on my 2025 Changan Oshan X7**.
-I'm putting the steps and scripts here so the next person doesn't have to figure
-all of this out again.
+Wired Android Auto works in full screen on my **2025 right-hand-drive Oshan X7**.
+This project installs **Open Headunit 3.5.0**, disables the original CarAuto app,
+saves the factory fullscreen setting, and gives the factory Home screen a large
+**Android Auto** card. It also hides the duplicate small OpenHU and launcher icons.
+Music, Radio, Bluetooth phone and the factory Home/Back controls keep their roles.
 
-Getting there took a bit of trial and error. Wireless was laggy, USB kept throwing
-connection prompts, and even when Android Auto worked, the factory interface left
-big bars on both sides. I ended up using **Open Headunit**, disabling the original
-**CarAuto** app, and saving the factory's per-app fullscreen setting. Wired AA now
-works on my car, and the changes survived a normal Android reboot.
-[See the before-and-after screenshots](#screenshots-from-my-car).
+Only the exact **F202_MCA / Android 9 / F202RHD_D1_20241022162756** firmware is
+supported. Setup checks the firmware and original/active launcher before writing.
+The car already needs the tested root access; the script does not root it or
+install Google services. Android Auto runs on the phone; Open Headunit receives it
+on the car. The phone does not need USB debugging.
 
-I also changed the factory launcher's large **Connection / CarAuto** card into
-an **Android Auto / Open Headunit** button. It opens the receiver directly, with
-the duplicate small OpenHU tile and unwanted launcher entries hidden. Music,
-Radio, Bluetooth phone and the factory Home button keep their usual roles.
-[See the launcher before and after](#android-auto-on-the-factory-home-screen).
+**Evidence:** the individual changes and exact launcher APK worked on my car,
+including a normal Android reboot. **The combined v0.3 setup, automatic recovery
+and reboot-check workflow still need a full live car test.** Passing software tests
+is separate from seeing Android Auto work. [Evidence and limits](docs/verified-findings.md).
 
-I've included an agent-friendly setup as the first option below. The script
-checks the headunit before changing anything, installs this tested launcher
-update automatically as part of setup, and keeps a backup so you can undo its
-changes. There is no separate launcher installation step.
+## Start here
 
-## Option 1 — Let your AI agent handle it
-
-This is the easiest place to start if you already use a local AI agent. Give it
-access to the **laptop you will connect to the car**. I've included instructions
-for it to check and install Python and ADB, so you don't need to set those up
-beforehand. You don't need Git or Android Studio either.
-
-**Copy this to your agent:**
+Use a local AI agent on the **laptop that will connect to the car**, or follow the
+same steps yourself. A browser-only chat cannot access your laptop's USB port.
+Give your agent this:
 
 ```text
-Set up wired Android Auto on my 2025 Oshan X7. Read and follow AGENTS.md in this repo:
+Set up wired Android Auto using this repo:
 https://github.com/teymurl3ng/oshan-x7-2025-android-auto
+Read AGENTS.md, README.md, docs/agent-setup.md and docs/car-menu.md first.
+Prepare the laptop, check compatibility, then use the staged CLI and its unified
+restore. Verify each step before continuing. Ask me for physical actions and
+visible permission prompts. Keep machine checks and actual phone tests separate.
 ```
 
-Let the agent handle the downloads and commands. You'll still need to tap the
-car's screen, connect the cables, and approve any computer permission prompts.
-A browser-only chat won't have access to your laptop's USB port.
+The agent handles downloads, laptop tools, checks and commands. You handle the
+car's menus, cables, visible permission prompts and the actual phone test. Park
+the car and keep the headunit powered throughout setup.
 
-**To find the car's developer settings:** open its built-in **Phone → dial pad**,
-enter **`*#*#888`**, tap **Call**, then enter **`1111`** at the factory PIN screen.
-I've put the next taps, Chinese labels, and screenshots from my car in the
-[car-screen guide](docs/car-menu.md).
+| Phase | Connected equipment | Car USB role |
+| --- | --- | --- |
+| Install and Android reboot check | Laptop → car by USB data cable; phone disconnected | **Device模式** |
+| Use Android Auto | Android phone → car by USB data cable; laptop disconnected | **Host模式** |
+| Restore or diagnose later | Phone disconnected; laptop → car again | **Device模式** |
 
-## Option 2 — Set it up yourself
+Do not switch roles during a laptop command. The **video-recording USB port**
+worked for phone projection on my car; the ordinary port kept disconnecting after
+about 10–15 seconds. We have not recorded a complete physical port/cable map or
+connector photos. Identify the actual connectors and use suitable data cables;
+a charging-only cable will not carry ADB or Android Auto.
 
-If you'd rather run the commands yourself, here's the same process without an agent.
+## 1. Prepare the laptop
 
-1. Park the car and keep the headunit powered. Follow the
-   [car-screen guide](docs/car-menu.md) to enable USB debugging and select
-   **USB Device mode** for the laptop.
-2. [Download the repository ZIP](https://github.com/teymurl3ng/oshan-x7-2025-android-auto/archive/refs/heads/main.zip)
-   and extract it. If you use Git, you can clone this repo instead.
-3. Check that **Python 3.10+** is installed. If needed, use the official
-   [Windows](https://www.python.org/downloads/windows/) or
-   [macOS](https://www.python.org/downloads/macos/) installer; on Linux, use your
-   distribution's package manager.
-4. Open a terminal **inside the extracted repository folder** and run the
-   preparation command below. It finds ADB or downloads Google's official copy.
+Download and extract [the repository ZIP](https://github.com/teymurl3ng/oshan-x7-2025-android-auto/archive/refs/heads/main.zip),
+or use an existing Git checkout. Keep an existing `.oshan-x7` folder: it contains
+your original settings and recovery journal.
 
-   **Linux / macOS**
+The agent should detect the OS, run Python to verify **3.10+**, and install missing
+tools from the [trusted host sources](docs/agent-setup.md#2-find-or-install-python).
+For manual setup, use the official [Windows](https://www.python.org/downloads/windows/)
+or [macOS](https://www.python.org/downloads/macos/) Python installer, or your Linux
+package manager. No Android Studio, Java or pip packages are needed.
 
-   ```sh
-   python3 prepare.py
-   ```
+Open a terminal in the extracted repository folder:
 
-   **Windows PowerShell**
+```sh
+python3 prepare.py --json
+```
 
-   ```powershell
-   py -3 prepare.py
-   ```
+On Windows PowerShell, use **`py -3` instead of `python3`** for every command here.
+Preparation finds working ADB or downloads Google's official Platform Tools. It
+returns the tool paths; use `--adb "path returned by preparation"` if needed.
 
-   No Android Studio or `pip` packages are needed.
-5. Connect the laptop to the car with a suitable **USB data cable** and accept
-   **Allow USB debugging** on the car if shown. Disconnect phones from the laptop.
-6. Run setup in the same terminal:
+## 2. Connect the laptop to the car
 
-   ```sh
-   python3 oshan_x7.py setup
-   ```
+On the **car's built-in Phone dial pad**, enter **`*#*#888`**, tap **Call**, then
+enter **`1111`**. Open **`开发模式` (Development mode)**, use **Settings** to enable
+Android **USB debugging**, and leave the factory USB-role control showing
+**`Device模式`**. [Exact Chinese labels, separate development-page PIN and pictures](docs/car-menu.md).
 
-   On Windows, use `py -3 oshan_x7.py setup`.
+Connect the laptop with a USB data cable. If **Allow USB debugging** appears on
+the car, accept it; choose “Always allow from this computer” only for your own
+trusted laptop. Disconnect other phones from the laptop so the car is unambiguous.
+The agent must resolve missing/unauthorized USB access before making car changes.
+[Connection help](docs/reference.md#connection-help).
 
-If it can't find your car, I've collected the common causes in
-[connection help](docs/reference.md#connection-help).
-For a read-only compatibility check, run `python3 oshan_x7.py check` (Windows:
-`py -3 oshan_x7.py check`).
+## 3. Check, install, and verify while the laptop stays connected
 
-Setup checks the exact firmware, immutable factory launcher, active launcher
-identity and default Home activity first. It then installs Open Headunit if
-needed, disables CarAuto, saves fullscreen behavior and installs the tested
-launcher as an Android app update. It keeps the original system APK in place.
-Unknown firmware or launcher builds stop the process.
+Run in the same folder, using the same ADB path/port and state directory:
 
-## Start Android Auto after setup
+```sh
+python3 oshan_x7.py check --json
+python3 oshan_x7.py setup --reboot-check --json
+python3 oshan_x7.py status --json
+```
 
-1. Complete **Open Headunit** onboarding on the car. Choose **USB**, allow its
-   requested permissions, and use **right-hand drive**. On my car I used
-   landscape, about 10 inches, **180 DPI**, and phone GPS.
-2. Disconnect the laptop. In the factory menu, switch the USB role to
-   **`Host模式` (Host mode)**. [See the exact menu labels](docs/car-menu.md#switch-to-host-for-the-phone).
-3. Connect your Android phone directly to the car with a data cable. Accept the
-   phone's Android Auto prompts and Open Headunit's USB access prompt.
-4. Check the picture, audio, touch, voice input, and access to normal car controls.
-   Check again after a normal reboot.
-5. Press factory **Home** and try the large **Android Auto** card. It should open
-   Open Headunit, and Home should return to the edited launcher.
+Run setup only when **check passes**. Unknown firmware, launcher builds and
+unsupported receiver versions stop setup; do not bypass the checks.
 
-This USB-role switch caught me out during testing: the shared port needs
-**Device mode for the laptop** and **Host mode for the phone**.
-The little factory Home/Back buttons still stay on screen. On mine, the Home
-button overlaps some Android Auto controls; I left that alone for now.
+Setup saves the original state, then does one step at a time: check Home, install
+and open the receiver, disable CarAuto, save fullscreen, install/open the exact
+launcher update, and read everything back. It checks process stability, foreground
+activities and fresh crash/ANR events between steps. The launcher is rebuilt from
+the hash-checked factory APK and bundled patch; the original system APK stays intact.
 
-On my car, wired AA stayed connected using the **video-recording USB port**.
-The other port repeatedly disconnected, including after about 10–15 seconds.
-If that happens, try the recording port with the same data cable. The cause of
-that port difference is unresolved. **Gemini/microphone recognition is also
-unresolved on my car**; this launcher update does not fix voice input.
+Keep watching the car. Accept Open Headunit's visible permissions and complete its
+onboarding: choose **USB**, **right-hand drive**, and landscape. My receiver setup
+used about **10 inches, 180 DPI and phone GPS**. If the command reports
+**`waiting_for_permissions`** (exit 3), accept the visible car prompt and rerun
+the **same setup command**. Do not switch to Host or create a new backup directory.
+An unrecognized blocking screen needs inspection; the script does not silently
+approve permissions.
+
+`--reboot-check` performs a **normal Android reboot** while the laptop remains
+connected, checks a new boot identity and the saved state, and opens Home/OpenHU
+again. This is not an ignition/power-off test. A completed matching run is a no-op;
+a run without this option asks you to add the reboot check before the phone handoff.
+
+If a step fails, setup attempts the same guarded recovery used by `restore`.
+If USB is lost, it keeps the journal so recovery can continue after reconnection.
+Do not proceed to the phone test while recovery or permissions are pending.
+[Recovery and its limits](docs/recovery.md).
+
+Before disconnecting, check that the large Android Auto card opens OpenHU, Home
+returns to the edited launcher, unwanted duplicate icons are absent, and your
+usual radio/music, AC, phone and settings controls still respond. These human
+checks add evidence that process health alone cannot provide.
+
+## 4. Connect the phone and test Android Auto
+
+1. After setup reports **`phone_handoff`**, disconnect the laptop.
+2. In the factory **`开发模式`** page, select **`Host模式`**.
+3. Connect the Android phone directly to the **video-recording USB port** with a
+   data cable. Open the large **Android Auto** card and choose USB in Open Headunit.
+4. On the **car**, accept Open Headunit's USB-device/access prompt. If it offers
+   an “always use” option for this receiver, select it. On the **phone**, unlock
+   it and accept Android Auto setup/permission prompts. Exact wording varies.
+5. Test Maps, sound and touch. Press factory Home, reopen the large Android Auto
+   card, then disconnect/reconnect once. Confirm your usual native controls work.
+
+Repeated USB prompts are not proof of a permission problem: on my car they also
+accompanied an unstable port. Confirm Host mode, data cable and recording port
+before repeatedly changing settings. If the screen stays black or reconnects,
+[return to USB Device mode for diagnosis](docs/recovery.md).
+
+OpenHU **Settings → General → Show toast messages → Off → Save** removed the large
+routine reconnect popup on my car. This is an optional visible app setting, left
+alone by the CLI and its restore. Forced error messages can still appear.
+
+**Known limits:** Gemini/microphone recognition remains unresolved, including the
+native assistant. Wireless has not been retested since disabling CarAuto. The
+small factory Home/Back overlays remain; Home can cover some AA controls. A cold
+ignition cycle and every possible vehicle function have not been qualified.
 
 ## Android Auto on the factory Home screen
 
@@ -143,7 +174,7 @@ The app menu also keeps its native entries without a second launcher icon:
 
 These are actual launcher captures from my car, not pictures of an active AA
 session. I separately tested the large card, Home return, usual native controls
-and wired AA. The unified installer still needs its own full live setup/restore
+and wired AA. The unified v0.3 installer still needs its own full live setup/restore
 test. [Launcher details, checks and recovery](docs/launcher.md).
 
 ## Screenshots from my car
@@ -166,56 +197,41 @@ width separately with my phone connected.
 
 ## Undo the setup
 
-Keep the `.oshan-x7` folder: it contains your original settings and restore journal.
-Switch back to **Device mode**, reconnect the laptop, and run from the same folder:
+Use the **same laptop, repository and `.oshan-x7` folder** (or the same custom
+`--state-dir`). Disconnect the phone, select **Device模式**, connect the laptop,
+and run:
 
 ```sh
-python3 oshan_x7.py restore
+python3 oshan_x7.py restore --json
 ```
 
-On Windows, use `py -3 oshan_x7.py restore`. If setup was interrupted, reconnect
-and run restore before trying a new setup. [Backup and recovery details](docs/reference.md#backups-and-recovery).
+This is one restore for all changes owned by that setup cycle: launcher update,
+fullscreen behavior, CarAuto state, and a newly installed receiver. Preexisting
+apps remain. Manually chosen receiver/phone settings remain outside this journal.
+A partial restore reports what is blocked and can be retried. Keep the backup.
+[Full recovery guide](docs/recovery.md).
 
-Restore first removes the launcher update **only if this setup cycle installed
-it**, returning to the untouched factory APK while retaining launcher data. A
-launcher update that was present before setup is kept. CarAuto, fullscreen and
-receiver ownership are then restored from the same saved journal.
+Recovery needs responsive Android, package management and authorized USB ADB. No
+USB-only script can repair a unit that cannot expose ADB. After the laptop is
+unplugged there is no background crash watcher. Regaining Device mode from Host
+with an unusable launcher has **not** been qualified; do not assume an emergency
+menu or hardware recovery route exists. [Pending car tests](docs/testing.md).
 
-## What I've tested, and what I haven't
+## Project guides
 
-My car is a **2025 Changan Oshan X7**, right-hand drive, with an **F202_MCA /
-Android 9** headunit running **`F202RHD_D1_20241022162756`**. That's the setup I
-have evidence for. I don't want someone trying this on a different unit just
-because it also says Oshan X7, so the script checks the firmware, MCU, hardware,
-screen, and original launcher hash. It stops if they don't match.
-[Full compatibility details](docs/reference.md#compatibility).
+| Guide | Purpose |
+| --- | --- |
+| [Agent workflow](docs/agent-setup.md) | Laptop preparation, stage decisions and what to verify |
+| [Car screens](docs/car-menu.md) | Exact menus, Chinese labels, roles, prompts and cables |
+| [Recovery](docs/recovery.md) | One restore, interrupted runs and recovery boundaries |
+| [Reference](docs/reference.md) | Compatibility, CLI options and machine-readable states |
+| [Launcher](docs/launcher.md) | Pinned patch, source changes and ownership |
+| [Verified findings](docs/verified-findings.md) | Live evidence, owner reports, code findings and unknowns |
+| [Testing](docs/testing.md) | Offline checks and the outstanding live test |
 
-I've tested the individual changes on my car: wired Android Auto works on the
-recording USB port and fills the width. The exact launcher build included here
-was installed and its icons, large card and Home return survived a normal
-Android reboot. The earlier launcher also passed a factory rollback/reinstall
-test. **The unified v0.2 installer has not yet completed a full setup-and-restore
-cycle on the car.** Its software tests pass; that is a separate check. I haven't
-tested a cold ignition/power-off cycle or exhaustively tested every car function.
-
-**I also haven't tried wireless again since disabling CarAuto.** It might be
-worth investigating, but I can't tell you it works. After setup, check the actual
-picture, audio, and controls on your own car; a successful command isn't that test.
-
-## More help
-
-- [Car-screen guide, Chinese labels, and actual PIN-screen image](docs/car-menu.md)
-- [Agent workflow: install missing tools and complete the setup](docs/agent-setup.md)
-- [Compatibility, connection help, commands, and recovery](docs/reference.md)
-- [Verified findings](docs/verified-findings.md) · [Testing](docs/testing.md) · [Contributing](CONTRIBUTING.md)
-
-Credit for the Android Auto receiver goes to
-**[Open Headunit](https://github.com/andreknieriem/open-headunit)** and its maintainers.
-I used **3.5.0 / code 119** here; the script downloads that official APK and checks
-its checksum. The launcher patch is applied locally to the exact factory APK
-read from the car, producing the pinned tested update. Full factory/modified
-APKs and device backups stay private; only the patch and reviewed screenshots
-are included here. Open Headunit itself still comes from its official release.
-
-I'm not affiliated with Changan or Google. My installer code and documentation
-are available under the [MIT license](LICENSE).
+Credit to **[Open Headunit](https://github.com/andreknieriem/open-headunit)** and its
+maintainers. The installer downloads their official 3.5.0/code119 APK and verifies
+its checksum. Factory/modified APKs, signing keys and private backups are not
+published. Only the pinned launcher patch and reviewed screenshots are included.
+I'm not affiliated with Changan or Google. Installer code and documentation use
+the [MIT license](LICENSE). [Contributing](CONTRIBUTING.md).
