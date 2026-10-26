@@ -16,6 +16,11 @@ using the car. This is an evidence-based workflow for one tested firmware.
   Chinese labels in car-menu.md. Keep the separate development-page default PIN
   and its code-only evidence distinct. Ask for physical/UI actions, visible
   permissions or unavoidable OS approvals. Diagnose missing USB before changes.
+- AI-assisted setup still requires the owner to enter codes/PINs, operate the
+  car menus and authorize debugging before ADB access exists. Give the exact
+  sequence, each PIN's evidence limits and USB-role instructions directly when
+  guiding them. In owner-facing AI setup documentation, keep those steps inline;
+  a link to car-menu.md supplements them rather than replacing them.
 - Run `check --json`, then `setup --reboot-check --json`. The CLI journals each
   step, reads back its state and checks app/SystemUI health before continuing.
   Let machine checks and guarded automatic recovery run without asking the owner

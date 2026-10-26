@@ -99,12 +99,24 @@ Do not require a global PATH edit.
 
 Use [car-menu.md](car-menu.md). Show the owner the short sequence first:
 
-**Car Phone → dial `*#*#888` → Call → `1111` → factory menu.**
+1. **On the car:** built-in Phone dial pad → **`*#*#888`** → **Call** → outer
+   factory PIN **`1111`**. This outer PIN worked on the reference car.
+2. Select **`开发模式` (Development mode)**. If its separate PIN gate appears,
+   the saved factory-code default is **`3821`**. Explain that this value is
+   from code inspection, with no recorded live entry test; a changed password can
+   override it. Stop if rejected, rather than trying other codes.
+3. Tap **Settings** → Android **System → Advanced → Developer options** → enable
+   **USB debugging / `USB 调试`**. If Developer options is hidden, guide the
+   standard seven taps on **Build number** in About device/tablet, noting the
+   exact About-page label can vary.
+4. Return to factory **`开发模式`** and select **`Device模式`** for the laptop.
+   The owner connects the USB data cable and accepts **Allow USB debugging**.
 
-Then guide the exact Chinese labels for opening Android settings, enabling USB
-debugging, and selecting Device mode. Ask for screen context only if it differs
-from the documented controls. Do not invent coordinates or try another model's PIN.
-The separate `开发模式` page's default `3821` is code-verified, not a new live test.
+These remain owner actions in AI mode: there is no ADB connection through which
+to enter those codes beforehand. Give the actual steps and digits in your
+messages; do not just ask the owner to find “developer settings” or send a link.
+Use the screenshots in car-menu.md to support the instructions. Ask for screen
+context if it differs; do not invent coordinates or try another model's PIN.
 
 The owner connects the laptop and approves the car's debugging prompt. Do not
 change the shared port to Host while laptop commands are still running.

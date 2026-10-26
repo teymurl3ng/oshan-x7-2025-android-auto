@@ -46,6 +46,10 @@ Choose this if you want your agent to handle the computer work. It must run on
 that laptop's USB port. You do not need to install Python, ADB, Git or Android
 Studio beforehand; the agent's guide covers finding or installing the needed tools.
 
+**You still enter the car's dialer code and PINs, tap its menus and approve its
+permissions.** The AI handles the laptop commands; follow the car steps below
+when it asks.
+
 **Copy this message to your local agent:**
 
 ```text
@@ -57,6 +61,8 @@ compatibility, then use the supported setup with its Android reboot check.
 Verify each stage before continuing. Use the unified recovery if a stage fails;
 keep the original backup. Ask me for car-menu actions, cables, visible permissions
 and actual phone/native-control tests. Do not ask me to run routine commands.
+Give me the exact dialer code, PINs and Chinese menu labels when guiding those
+car steps; do not replace the instructions with a documentation link.
 Keep software checks separate from what we actually see and hear in the car.
 ```
 
@@ -64,16 +70,42 @@ Keep software checks separate from what we actually see and hear in the car.
 checks, the backed-up installer, stage verification, the Android reboot check
 and guarded recovery. [Detailed agent workflow](docs/agent-setup.md).
 
-**You handle these actions when it asks:**
+**Your car steps — including in AI mode:**
 
-1. On the car, open the factory menu, enable USB debugging and select **Device模式**.
-   The agent should guide the [exact Chinese labels and PIN screens](docs/car-menu.md).
-2. Connect the laptop to the car with a data cable. Accept **Allow USB debugging**
-   on the car and any unavoidable trusted laptop-installer approval.
-3. Complete OpenHU onboarding and visible permissions. Leave the laptop connected
-   in Device mode through installation and the Android reboot check.
-4. Check the large Android Auto card, Home and your usual native controls. When
-   the agent confirms it is ready, follow [the phone test below](#both-options-connect-the-phone-and-test).
+1. Park and keep the headunit powered. On the **car's built-in Phone / Bluetooth
+   phone dial pad**, enter **`*#*#888`** and tap **Call**. At the black factory
+   PIN keypad, enter **`1111`**. The menu opens after the fourth digit.
+2. Select **`开发模式` (Development mode)** in the factory menu. If another PIN
+   keypad appears, it is a separate gate: its saved factory-code default is
+   **`3821`**. **1111 worked on my car. 3821 was found in the saved app's code;
+   we have no recorded test of entering it on the car.** A changed development
+   password can override that default. If it is rejected, stop and tell your agent.
+3. Tap **Settings** beside the USB-role control. In Android settings, open
+   **System → Advanced → Developer options** (labels may read
+   **`系统` → `高级` → `开发者选项`**) and enable **USB debugging / `USB 调试`**.
+   If Developer options is hidden, tap **Build number** seven times under
+   **About device / About tablet**, then return. Accept the debugging confirmation.
+4. Return to the factory **`开发模式`** page. Tap the USB-role control only if
+   needed until it shows **`Device模式`**. Keep it in Device mode while the
+   laptop runs setup and the normal Android reboot check. **`重启`** means
+   Reboot; you do not need to tap it here.
+5. Connect the laptop directly to the car with a suitable USB data cable. Accept
+   **Allow USB debugging** on the car for your trusted laptop. Tell the agent it
+   is connected; it checks ADB and compatibility. Approve any unavoidable trusted
+   laptop-installer prompt when asked.
+6. When OpenHU opens, complete its onboarding: **USB**, **right-hand drive**,
+   landscape. My reference choices were about **10 inches, 180 DPI and phone GPS**.
+   Accept the visible app permissions. If setup pauses for a permission, tell the
+   agent after accepting it; the agent resumes the same backed-up setup.
+7. After the agent verifies setup and the Android reboot, check the large Android
+   Auto card, Home and your usual native controls. Then follow
+   [the phone test below](#both-options-connect-the-phone-and-test): disconnect
+   the laptop, select **Host模式**, connect the phone to the recording USB port
+   and accept the car/phone prompts.
+
+[Car-menu screenshots and full screen reference](docs/car-menu.md) are available
+if you need to identify a screen. You carry out these car steps while the
+agent prepares and runs the laptop side of setup.
 
 **You can skip Option 2.** It is the alternative for people running the computer
 steps themselves.
@@ -120,11 +152,20 @@ path with `--adb "path to adb"`. [Command options](docs/reference.md#host-tools-
 
 ### 2. Put the car in Device mode and connect the laptop
 
-On the **car's built-in Phone dial pad**, enter **`*#*#888`**, tap **Call**, then
-enter **`1111`**. Open **`开发模式` (Development mode)**. Use **Settings** to enable
-Android **USB debugging**, then leave the factory USB-role control showing
-**`Device模式`**. The development page can have a separate PIN gate;
-[follow the exact screen guide](docs/car-menu.md).
+1. On the **car's built-in Phone dial pad**, enter **`*#*#888`**, tap **Call**,
+   then enter **`1111`** at the black factory PIN keypad.
+2. Open **`开发模式` (Development mode)**. If a second PIN keypad appears, the
+   saved factory-code default is **`3821`**. The outer **1111** worked on my car;
+   **3821** was found in the saved app's code, with no recorded live entry test.
+   A changed password can override it. Stop if rejected; do not guess.
+3. Tap **Settings**. In Android settings, open **System → Advanced → Developer
+   options** and enable **USB debugging / `USB 调试`**. If Developer options is
+   hidden, tap **Build number** seven times under **About device / About tablet**,
+   then return. Accept its confirmation.
+4. Return to factory **`开发模式`** and leave the USB-role control showing
+   **`Device模式`**. Tap it only if it needs changing.
+
+[Car-menu screenshots and Chinese label reference](docs/car-menu.md).
 
 Connect the laptop directly to the car using a suitable USB data cable. Accept
 **Allow USB debugging** on the car; choose “Always allow from this computer” only
@@ -193,7 +234,10 @@ absent, and your usual radio/music, AC, phone and settings controls respond.
 
 After the successful laptop stages and native-control checks:
 
-1. **Disconnect the laptop.** In the factory **`开发模式`** page, select **`Host模式`**.
+1. **Disconnect the laptop.** To reopen the factory menu if needed, use the
+   **car's Phone dial pad → `*#*#888` → Call → `1111` → `开发模式`**. If its
+   separate development PIN is requested, the code-inspected default is **`3821`**,
+   with the evidence/change-password limits described above. Select **`Host模式`**.
 2. Connect the Android phone directly to the car's **video-recording USB port**
    with a data cable. Open the large **Android Auto** card and choose USB in OpenHU.
 3. On the **car**, allow OpenHU's USB-device/access prompt; select its always-use
