@@ -68,7 +68,7 @@ path pinned in the CLI.
 
 On the car, the receiver key read back as 0 and bounds/rendered surface expanded
 to 1920×720. The owner then confirmed full-width connected Android Auto. The
-[before/after pictures](../README.md#screenshots-from-my-car) document the
+[before/after pictures](screenshots.md#full-screen-open-headunit) document the
 receiver's main screen. Other apps have not been qualified for this setting.
 Normal Android reboot read-back persisted; a cold ignition cycle is untested.
 
@@ -97,7 +97,7 @@ The launcher changes remove/redirect retired CarAuto shortcut/connection handlin
 and open OpenHU from the large card. The Bluetooth card retains its original
 size/position. Music/Radio, native menu entries and Home/Back overlays remain.
 The proposed enlarged Bluetooth/four-card layout was discarded and is not part
-of this release. [Actual screenshots](../README.md#android-auto-on-the-factory-home-screen).
+of this release. [Actual screenshots](screenshots.md#factory-launcher).
 
 The factory USB-page screenshot on 2026-10-26 was a read-only capture of an
 already unlocked menu. `开发模式`, `Device模式` and Settings were visible and

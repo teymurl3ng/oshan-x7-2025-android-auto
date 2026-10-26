@@ -6,7 +6,7 @@ It hides the redundant small OpenHU tile and launcher/test-launcher app-menu
 entries, including saved rows. Music, Radio, Bluetooth phone, the app-menu
 vehicle entries and the factory Home/Back overlays remain available.
 
-[Before and after, captured on the car](../README.md#android-auto-on-the-factory-home-screen).
+[Before and after, captured on the car](screenshots.md#factory-launcher).
 The Bluetooth card keeps its original size and position.
 
 ## How setup installs it
