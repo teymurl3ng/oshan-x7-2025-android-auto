@@ -1,0 +1,39 @@
+{
+  "id": "f202-mca-rhd-20241022",
+  "vehicle": "Changan Oshan X7 (2025, owner-reported, right-hand drive)",
+  "properties": {
+    "ro.product.manufacturer": "alps",
+    "ro.product.model": "F202_MCA",
+    "ro.product.name": "full_spm8666p1_64",
+    "ro.product.device": "spm8666p1_64",
+    "ro.build.version.release": "9",
+    "ro.build.version.sdk": "28",
+    "ro.product.cpu.abilist": "arm64-v8a,armeabi-v7a,armeabi",
+    "ro.board.platform": "mt6771",
+    "ro.build.fingerprint": "alps/full_spm8666p1_64/spm8666p1_64:9/PQ2A.190405.003/zhangdan10221638:user/test-keys",
+    "ro.build.type": "user",
+    "ro.build.version.security_patch": "2020-11-05",
+    "ro.build.display.id": "F202RHD_D1_20241022162756",
+    "persist.sys.mcu_version": "F202RHD_20240722_1"
+  },
+  "physical_size": "1920x720",
+  "launcher": {
+    "package": "com.chinatsp.launcher",
+    "path": "/system/app/F202_Launcher/F202_Launcher.apk",
+    "sha256": "0c50bad53fa2116e98928c74be78e1b9609a1d3f73d3ee42726b001ae7ddefb0"
+  },
+  "required_packages": [
+    "com.android.systemui",
+    "com.chinatsp.tfactoryapp",
+    "com.eryanet.vlink"
+  ],
+  "receiver": {
+    "package": "com.andrerinas.headunitrevived",
+    "version_name": "3.5.0",
+    "version_code": 119,
+    "url": "https://github.com/andreknieriem/open-headunit/releases/download/v.3.5.0/com.andrerinas.headunitrevived_3.5.0.apk",
+    "sha256": "609ca23b4eb0deaad2a58f6463b26cbf58bdc602ac0775eb5e7adb293a75a14d",
+    "bytes": 13903086
+  },
+  "evidence": "docs/verified-findings.md"
+}

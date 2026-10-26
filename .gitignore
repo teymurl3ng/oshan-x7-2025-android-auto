@@ -1,0 +1,25 @@
+# Private device state and downloaded/backup binaries
+.oshan-x7*/
+*.apk
+*.apks
+*.aab
+*.img
+*.bin
+*.jar
+*.dex
+*.vdex
+*.odex
+*.log
+.env
+.env.*
+device/
+backups/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.DS_Store
+.agents/
+.aws/
+.codex/
