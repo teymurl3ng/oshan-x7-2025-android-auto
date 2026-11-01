@@ -9,32 +9,32 @@
       "file": "launcher-carlink.png",
       "sha256": "bf65755b952b730ed9c1c56e31403d290c80fe5854435615226be3b17f7361de",
       "bytes": 224155,
-      "description": "Factory Home with the new large CarLink card, after the verified Android reboot."
+      "description": "Factory Home with the large CarLink card, after the Android reboot check."
     },
     {
       "file": "launcher-carlink-app-menu.png",
       "sha256": "0e48250e03ec29397b3be8b2b0f8e092314e1c59e1cbd4ac808409aa0428a876",
       "bytes": 171002,
-      "description": "Native app-menu page; duplicate receiver/launcher entries absent."
+      "description": "App menu with native settings and tools; redundant projection/launcher entries hidden."
     },
     {
       "file": "carplay-fullscreen.png",
       "sha256": "84d59c43888eeeecfa4d1258392fc881aa70ac44e5e1e95bafd66ac4900960fe",
       "bytes": 283769,
-      "description": "Actual fullscreen CarPlay Search frame; transport not inferred."
+      "description": "Fullscreen CarPlay Search."
     },
     {
       "file": "android-auto-fullscreen.png",
       "sha256": "61e8cdc9013aafe9d754f52837f65e88eee88c605c78568434165b13be943da8",
       "bytes": 230168,
-      "description": "Actual fullscreen Android Auto dashboard; early frame selected before map labels and media content loaded."
+      "description": "Fullscreen Android Auto dashboard before map labels and media content loaded."
     },
     {
       "file": "carlink-home-fullscreen.png",
       "sha256": "9e355eeaa0cbcbcc8f6d9cf424c115f0bb7188d023fcbecfdf1198392c27182c",
       "bytes": 1197931,
-      "description": "CarLink receiver Home at full width; connection option shown, not active projection."
+      "description": "CarLink connection screen at full width, before phone projection."
     }
   ],
-  "capture_context": "Captured before the official signing-identity switch; UI/code asset payloads match. These frames do not establish USB prompt automation."
+  "capture_context": "See docs/verified-findings.md#screenshot-provenance for build provenance and test limits."
 }

@@ -98,13 +98,13 @@ def prepare(download=True):
     if system not in URLS:
         raise PreparationError("Unsupported laptop OS. Install ADB with your trusted package manager.")
     if system == "Linux" and platform.machine().lower() not in ("x86_64", "amd64"):
-        raise PreparationError("Google's Linux archive requires x86_64. Have the agent install native "
+        raise PreparationError("Google's Linux archive requires x86_64. Install native "
                                "ADB from your distribution's package manager, then rerun preparation.")
     TOOLS.mkdir(parents=True, exist_ok=True, mode=0o700)
     target = TOOLS / "platform-tools"
     # Keep a broken previous download for diagnosis rather than overwriting files.
     if target.exists():
-        raise PreparationError(f"The private ADB at {target} does not run. Have the agent diagnose it "
+        raise PreparationError(f"The private ADB at {target} does not run. Diagnose it "
                                "or move this directory aside before retrying.")
     with tempfile.TemporaryDirectory(prefix="prepare-", dir=TOOLS) as temporary:
         stage = Path(temporary)

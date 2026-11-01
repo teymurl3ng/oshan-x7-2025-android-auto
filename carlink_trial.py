@@ -317,8 +317,9 @@ class Trial:
         try:
             return self.c.healthy_launch(self.adb, component, baseline)
         except self.c.NeedsPermissions as exc:
-            raise self.c.NeedsPermissions("Accept the visible CarLink permission prompt, then rerun "
-                                         "carlink-trial with the same state directory and USB connection.") from exc
+            raise self.c.NeedsPermissions("Inspect the unexpected CarLink permission screen and diagnose "
+                                         "the missing access. Keep Device mode and the original backup; "
+                                         "use status or restore before attempting setup again.") from exc
 
     def require_owned(self, state):
         if not state.get("installed") or not state.get("verified"):
@@ -720,11 +721,11 @@ class Trial:
                 "carlink_launcher_reboot_verified": bool(journal.get("carlink_launcher_reboot_verified")),
                 "projection_tested": False,
                 "android_reboot_verified": bool(journal.get("android_reboot_verified")),
-                "next_action": ("accept_carlink_permission_then_rerun_trial" if status == "waiting_for_permissions"
+                "next_action": ("inspect_permission_prompt" if status == "waiting_for_permissions"
                                 else "carlink_restore" if status == "recovery_required"
                                 else "trial_restore_complete" if journal["restored"]
                                 else "phone_handoff" if journal.get("android_reboot_verified")
-                                else "rerun_carlink_trial_with_reboot_check")}
+                                else "inspect_existing_setup_with_status")}
 
 
 def run(core, adb, state_dir, command, supplied=None, verify_reboot=False, remove_openhu=False):
@@ -753,7 +754,8 @@ def run(core, adb, state_dir, command, supplied=None, verify_reboot=False, remov
                 "trial_phase": journal["phase"] if journal else None,
                 "next_action": "carlink_restore" if interrupted else
                                "use_new_state_directory" if restored else
-                               "phone_handoff" if primary else "carlink_trial"}
+                               "inspect_permission_prompt" if journal and journal["phase"] == "waiting_for_permissions" else
+                               "phone_handoff" if primary else "inspect_existing_setup_with_status"}
     with core.exclusive(state_dir):
         if command in ("carlink-reference-start", "carlink-reference-collect", "carlink-reference-pages"):
             import reference_capture

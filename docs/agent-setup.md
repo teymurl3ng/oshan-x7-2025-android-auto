@@ -1,240 +1,191 @@
-# Agent workflow: take care of the laptop setup
+# Installation runbook for AI agents
 
-Public setup installs official CarLink directly. Use `check`,
-`setup --reboot-check`, `status` and `restore` with the original state directory.
-CarLink's supported Android 9 permissions are granted automatically inside setup;
-the owner does not need to navigate its permission screens.
+Handle the computer work from repository acquisition through installation and
+recovery. Ask the user only for actions that need their hands or actual OS
+approval. Give **one physical action at a time**, naming the device, screen,
+control and expected result. Wait for a reply or verified device read-back before
+requesting the next action.
 
-I wrote this for the agent doing the setup. Please handle the laptop preparation
-yourself instead of asking the person to install developer tools, find executable
-paths, or fix PATH variables. Then use the firmware-gated CLI for the car changes.
+Read [AGENTS.md](../AGENTS.md), [car menus](car-menu.md),
+[permissions](permissions.md) and [recovery](recovery.md) before car access.
 
-## 1. Inspect the laptop and get the repository
+## 1. Find or acquire the repository
 
-- The README's automatic-install prompt is a starting point on a laptop with
-  no project or tools installed. Download/extract the project yourself; do not
-  ask the owner to clone it, download a ZIP, install Git or prepare a repo folder.
-- Identify the real host OS and CPU. Use native Windows tools for a Windows USB
-  connection; do not assume a WSL container or a remote sandbox can see local USB.
-- Use an existing checkout if available. Otherwise clone the repo if Git works.
-- If Git is absent, **do not make Git a prerequisite**. Download
-  [the repository ZIP](https://github.com/teymurl3ng/oshan-x7-2025-android-auto/archive/refs/heads/main.zip)
-  using the host's downloader, extract it, and work in the extracted folder.
-  PowerShell has `Invoke-WebRequest` and `Expand-Archive`; macOS has `curl` and
-  `ditto`. On Linux, use available download/archive tools, or Python after step 2.
-- Read this guide, AGENTS.md, and the car-screen guide. Check for an existing
-  `.oshan-x7` backup before starting a new cycle. Preserve an existing checkout and
-  its backup rather than downloading over it.
-- Once laptop preparation is complete, request the remaining physical/menu
-  actions one at a time. State the device, screen, control and expected result;
-  wait for the owner's reply or machine read-back, then continue. Skip steps
-  already established by the current connection. Keep handling routine computer
-  commands and diagnostics yourself between those requests.
+Identify the laptop's OS/CPU and whether your terminal can access its local USB.
+Use native Windows tools for Windows USB; do not assume WSL, a remote machine or
+a container can see the car.
 
-## 2. Find or install Python
+Look for an existing checkout and `.oshan-x7` or custom state directory. Reuse
+these without overwriting backups. Otherwise acquire the repository yourself:
+use Git if available, or download and extract
+[the ZIP](https://github.com/teymurl3ng/oshan-x7-2025-android-auto/archive/refs/heads/main.zip).
+PowerShell provides `Invoke-WebRequest` and `Expand-Archive`; macOS provides
+`curl` and `ditto`. On Linux use available archive tools, or install Python as
+below and use its standard library. Git is optional.
 
-Run the existing interpreter to verify **Python 3.10 or newer**; a command name
-alone is insufficient. Check its ability to import `ssl`, `urllib.request`, and
-`zipfile`. Record the interpreter's absolute executable path for subsequent calls:
+Do not ask the user to download the project, install Git, find executable paths
+or repair PATH. Keep working in the acquired folder; a ZIP checkout is sufficient.
+
+## 2. Prepare Python and ADB
+
+Execute an existing Python to verify **3.10+**, its standard-library modules and
+absolute executable path:
 
 ```sh
 python3 -c "import sys, ssl, urllib.request, zipfile; print(sys.executable); print(sys.version); raise SystemExit(sys.version_info < (3, 10))"
 ```
 
-On Windows, also check `py -3` and `python`; a Microsoft Store alias which opens
-the Store is not a working interpreter. Reuse a suitable existing installation.
-**If Python is missing or too old, install it yourself** using an appropriate
-official installer or the laptop's trusted package manager:
+On Windows also inspect `py -3` and `python`. An alias opening the Store is not
+a working interpreter. Reuse a suitable installation. If Python is missing or
+too old, install it yourself from a trusted source:
 
-| Host | Agent action when Python is missing |
+| Laptop | Installation source and checks |
 | --- | --- |
-| Windows 10/11 with WinGet | Install the PSF package, for example `winget install --id Python.Python.3.13 --exact --source winget --accept-package-agreements --accept-source-agreements`. Then locate and execute the installed interpreter; refresh the process PATH or use its full path. |
-| Windows without WinGet | Download a supported Windows installer from [python.org](https://www.python.org/downloads/windows/), verify its Python Software Foundation Authenticode signature, and run a per-user install. The [Python Windows documentation](https://docs.python.org/3/using/windows.html) also describes the official install manager. Do not require the owner to install WinGet first. |
-| Ubuntu / Debian | Inspect `/etc/os-release`. Use the distribution's signed repositories to install `python3`, then check the resulting version. Ubuntu 22.04+ and Debian 12+ provide a suitable baseline. Do not repoint the system's Python symlinks. |
-| Fedora / other Linux | Use the identified distribution's signed package manager for Python 3. Verify the result; do not guess an `apt` command on a different distribution. |
-| macOS with an existing Homebrew | Reuse a suitable interpreter or install a supported Python with the existing package manager. Do not install Homebrew just to obtain Python. |
-| macOS without a package manager | Download a supported signed/notarized `universal2` installer from [python.org](https://www.python.org/downloads/macos/), verify it with `pkgutil --check-signature`, and run the installer with the required OS approval. Complete its documented certificate setup and verify HTTPS works. [Official macOS installation instructions](https://docs.python.org/3/using/mac.html). |
+| Windows | Use the official [Python install manager](https://docs.python.org/3/using/windows.html) from python.org or Microsoft Store, or an appropriate PSF package from an existing WinGet installation. Verify the publisher/signature of downloaded installers. Install a runtime, then execute it and record its absolute path. Do not install WinGet merely for this task. |
+| macOS | Reuse an existing package manager, or download the signed `universal2` package from [python.org](https://www.python.org/downloads/macos/). Verify with `pkgutil --check-signature`, install and complete `Install Certificates.command` as described in the [official guide](https://docs.python.org/3/using/mac.html). Check HTTPS works. Do not install Homebrew just for this task. |
+| Linux | Identify the distribution using `/etc/os-release`, then use its signed package repositories for Python 3. Check the installed version; do not change system Python symlinks. |
 
-Choose a currently supported compatible release from the source, rather than
-inventing a versioned download URL. Python 3.13 is included in this repo's CI;
-an already working newer compatible interpreter need not be replaced. No `pip`
-dependencies, Java, full Android Studio, or phone-side debugging are required.
+Choose an available supported release from the source, not an invented download
+URL. CI covers Python 3.10 and 3.13; do not replace a working compatible Python
+just to match those versions. There are no pip dependencies, Java or Android
+Studio requirements.
 
-Carry out the installation within your available permissions. If an actual OS
-administrator prompt or installer consent requires the owner, prepare the exact
-installer/action first and ask only for that action. Do not hand back a generic
-"install Python and try again" task. A managed laptop may require its administrator;
-do not claim you can bypass those restrictions.
+If an installer/administrator approval requires the user, prepare the concrete
+trusted action and ask for that action only. A managed laptop may need its
+administrator. Continue preparation yourself after approval.
 
-## 3. Find or download ADB automatically
-
-Using the verified interpreter, run:
+With the verified interpreter, run:
 
 ```sh
 python3 prepare.py --json
 ```
 
-Use the actual interpreter path or `py -3` on Windows. The helper:
+The helper executes `adb version` for existing PATH/private/common SDK copies.
+If none works, it downloads the complete official Google Platform Tools archive
+and verifies that the extracted ADB runs. It returns absolute Python/ADB paths
+and versions without accessing the car. Use its ADB path with `--adb` for every
+car command; no global PATH change is needed.
 
-1. Runs `adb version` against existing PATH, local, and common SDK installations.
-2. If none works, downloads the complete official Google Platform Tools ZIP for
-   the host OS over HTTPS, and extracts it privately under `.oshan-x7/tools/`.
-3. Tests the extracted `adb version`, including the Windows DLLs kept alongside it.
-4. Returns the Python/ADB paths and versions. It never connects to or changes the car.
+The download links come from [Google's Platform Tools page](https://developer.android.com/tools/releases/platform-tools).
+The recorded archive digest is a local audit record, not an independent integrity
+pin. CarLink and the launcher have separate fixed artifact hashes.
 
-The [official Google download page](https://developer.android.com/tools/releases/platform-tools)
-is the source of these stable download links:
+On Linux ARM use the distribution's native `adb`/`android-tools` package; Google's
+Linux ZIP is x86_64. Diagnose incompatible/broken binaries rather than repeatedly
+downloading them. Preserve a broken private tools folder for diagnosis. Resolve
+certificate setup if HTTPS fails; never disable TLS verification.
 
-| OS | Official archive |
+## 3. Establish authorized USB
+
+Check existing USB access before repeating car-menu onboarding. Use the verified
+ADB with `devices -l` on port **5037**, or reuse the environment's actual custom
+server port. Do not blindly kill servers or replace working tools.
+
+If the car is not already authorized, guide these actions individually, inline
+in your messages, using [the pictures](car-menu.md):
+
+1. Park and keep the car powered, with the phone disconnected.
+2. On the car's Phone dial pad enter **`*#*#888`**, tap **Call**, then enter
+   **`1111`** to open the factory menu.
+3. Open **`开发模式` (Development mode)**. If it separately asks for a PIN,
+   explain that **`3821`** is its code-inspected default, not a tested live entry.
+   A changed password may override it. Stop if rejected.
+4. Tap **Settings**. In Android **System → Advanced → Developer options**, enable
+   **USB debugging / `USB 调试`**. If hidden, use the standard seven taps on
+   **Build number** in **About device/tablet**; the exact About label may vary.
+5. Return to `开发模式` and select **Device模式**. Have the user connect the USB
+   data cable and accept **Allow USB debugging** for this trusted laptop.
+
+Inspect a different screen rather than guessing coordinates or trying codes
+from another model. Missing USB must be resolved before writes:
+
+| Condition | Next step |
 | --- | --- |
-| Windows | `https://dl.google.com/android/repository/platform-tools-latest-windows.zip` |
-| macOS | `https://dl.google.com/android/repository/platform-tools-latest-darwin.zip` |
-| Linux x86_64 | `https://dl.google.com/android/repository/platform-tools-latest-linux.zip` |
+| Unauthorized | Ask the user to accept this laptop's debugging authorization on the car. |
+| No device/offline | Inspect the USB role, data cable/port, OS detection and server. |
+| Linux access denied | Check device permissions and the distribution's Android USB/udev setup. Do not run the entire installer as root to bypass host permissions. |
+| Windows driver missing | Inspect hardware IDs; use a signed OEM driver from the manufacturer or Windows Update. Follow [Android's driver guidance](https://developer.android.com/studio/run/oem-usb); do not assume Google's driver fits or use arbitrary driver packs. |
+| Multiple devices | Disconnect other devices or select the car's verified USB serial explicitly. Network transports and emulators are refused. |
 
-The helper records the downloaded archive's SHA-256 for local auditing. That is
-not an independently published integrity pin; host tools come from Google's HTTPS
-endpoint. The receiver APK has its own fixed checksum in the firmware profile.
+Keep the same interpreter, ADB executable/server port, USB target and state folder
+throughout. Never change the shared USB role while a laptop command is running.
 
-For Linux ARM, use the distribution's native `adb` / `android-tools` package;
-Google's Linux ZIP is for x86_64. If a found binary fails, diagnose OS/CPU/library
-compatibility rather than repeatedly downloading it. If HTTPS fails after a new
-macOS Python install, finish that installer's certificate setup; do not disable TLS
-verification. Re-run preparation to verify the repaired installation.
+## 4. Check and install
 
-Use the returned absolute ADB path with the car CLI's `--adb` option. The CLI also
-searches working system, private, and common SDK installations automatically.
-Do not require a global PATH edit.
-
-## 4. Guide the owner through the car screens
-
-Use [car-menu.md](car-menu.md). Show the owner the short sequence first:
-
-1. **On the car:** built-in Phone dial pad → **`*#*#888`** → **Call** → outer
-   factory PIN **`1111`**. This outer PIN worked on the reference car.
-2. Select **`开发模式` (Development mode)**. If its separate PIN gate appears,
-   the saved factory-code default is **`3821`**. Explain that this value is
-   from code inspection, with no recorded live entry test; a changed password can
-   override it. Stop if rejected, rather than trying other codes.
-3. Tap **Settings** → Android **System → Advanced → Developer options** → enable
-   **USB debugging / `USB 调试`**. If Developer options is hidden, guide the
-   standard seven taps on **Build number** in About device/tablet, noting the
-   exact About-page label can vary.
-4. Return to factory **`开发模式`** and select **`Device模式`** for the laptop.
-   The owner connects the USB data cable and accepts **Allow USB debugging**.
-
-These remain owner actions in AI mode: there is no ADB connection through which
-to enter those codes beforehand. Give the actual steps and digits in your
-messages; do not just ask the owner to find “developer settings” or send a link.
-Use the screenshots in car-menu.md to support the instructions. Ask for screen
-context if it differs; do not invent coordinates or try another model's PIN.
-
-The owner connects the laptop and approves the car's debugging prompt. Do not
-change the shared port to Host while laptop commands are still running.
-
-## 5. Resolve the USB connection, then run setup
-
-Use the verified ADB executable. Start with `adb devices -l` on the normal local
-server port 5037. If the user's existing environment uses another port, inspect
-that existing server; port 5038 was used in the reference session. Do not blindly
-kill/restart servers or replace a working ADB installation.
-
-If no authorized USB transport appears, diagnose it:
-
-- **Unauthorized:** have the owner accept the car's debugging prompt.
-- **No device:** check Device mode, cable/port, and OS detection first.
-- **Linux access denied:** inspect the relevant USB group/udev permissions and
-  follow the distribution's Android-device setup. Do not run the entire installer
-  as root as a substitute for fixing USB access.
-- **Windows driver missing:** inspect Device Manager / hardware IDs, then obtain
-  an appropriate signed OEM driver through the manufacturer or Windows Update.
-  [Android's official driver guidance](https://developer.android.com/studio/run/oem-usb).
-  Do not install arbitrary driver packs, assume Google's driver fits this car,
-  or disable Windows driver-signature enforcement.
-- **Multiple devices:** disconnect phones or select the car's verified USB serial
-  explicitly. Network transports and emulators are refused by the CLI.
-
-Once authorized, retain the same interpreter, ADB executable, port, USB target
-and state directory. Never change transport/USB role during a command.
-
-## 6. Run the stages and act on their evidence
+Use the verified executable paths. The following commands show the sequence;
+replace the ADB placeholder and include any selected connection/state options
+on **every** command:
 
 ```sh
-python3 oshan_x7.py check --json
-python3 oshan_x7.py setup --reboot-check --json
-python3 oshan_x7.py status --json
+python3 oshan_x7.py check --adb "/absolute/path/to/adb" --json
+python3 oshan_x7.py setup --reboot-check --adb "/absolute/path/to/adb" --json
+python3 oshan_x7.py status --adb "/absolute/path/to/adb" --json
 ```
 
-Add `--adb "/absolute/path/to/adb"`, `--adb-port 5038` and/or `--serial ...` only
-as needed. Retain them for every later call. Setup must follow a successful
-**strict check**, not merely a recovery-eligible status. No force flag exists.
+Setup follows a successful strict `check`. Recovery-eligible status alone is
+insufficient. Stop mismatches without modifying profiles or bypassing checks.
+The head unit must provide its existing factory root (`su 0`); do not install root.
 
-| Stage | CLI evidence before proceeding | Agent action |
-| --- | --- | --- |
-| Compatibility | Exact firmware/MCU/display, factory and active launcher hash/UID/version/HOME, required apps, user 0, boot/root/receiver checks | Stop unknown configurations; diagnose rather than changing the profile |
-| Artifacts and backup | Official receiver pin; factory pull and patch/output pins; durable original state | Preserve the state directory; do not expose private data |
-| Baseline Home | Successful launch, resumed launcher, stable launcher/SystemUI processes, no fresh relevant crash/ANR | Stop and inspect a preexisting failure |
-| Receiver | Install official CarLink if absent; exact hash/version read-back | Continue into automatic permissions before first launch |
-| Permissions | Runtime/app-op/battery read-back and exact USB service bound to Android | Continue automatically; preserve other services and the original permission journal |
-| CarAuto | Exact disabled-user state read-back and SystemUI health | Continue automatically when verified |
-| Fullscreen | Saved value 0 and SystemUI health | Continue automatically; stored value is not proof of rendered width |
-| Launcher update | Exact reconstructed APK installed, hash/UID/version/HOME read-back, healthy foreground | Keep the factory base and journal; don't run a separate launcher installer |
-| Final state | All configured values plus healthy receiver | Complete visible onboarding while laptop stays connected |
-| Android reboot | One new boot identity, boot complete, configured state, Home/receiver health | Require `android_reboot_verified=true` before phone handoff |
-| Owner checks | Large card, Home, icons and usual native controls | Record what the owner actually tried |
-| Phone handoff | Disconnect laptop → Host模式 → phone on regular charging/CarAuto port | Owner tests real projection, sound, touch and reconnect |
+The installer performs these stages. Do not reproduce them with raw commands:
 
-Every journal operation is saved as incomplete before its action. Completion is
-saved only after that action's verification. The original snapshot is retained.
-There is one shared recovery engine for setup failure and the `restore` command.
-New health observation uses Android 9 process/foreground records and fresh log
-entries, without clearing logs. Three stable samples span roughly two seconds;
-startup observation is bounded to 12 seconds, with individual read timeouts.
-This detects some immediate failures; it does not prove long-term reliability.
+| Stage | Required result |
+| --- | --- |
+| Compatibility | Exact firmware/MCU/display, factory and active launcher identity/UID/version/Home, required apps, user 0, completed boot, root and Device mode |
+| Artifacts and backup | Verified CarLink download, factory launcher backup, reconstructed update and saved original settings |
+| Home | Healthy factory Home/SystemUI before installation |
+| CarLink | Install if absent; verify app identity |
+| Permissions | Grant and check runtime/special access, battery exemption and bound USB service before opening CarLink |
+| App check | CarLink opens with stable processes and no fresh relevant crash/ANR |
+| CarAuto/fullscreen | CarAuto disabled for user 0, CarLink layout value 0, SystemUI healthy |
+| Launcher | Exact update installed; identity/Home and foreground checks pass |
+| Final state/reboot | Current settings verified, new Android boot observed, settings and Home/CarLink checked after reboot |
 
-### Automatic permissions
+The installer saves intent before writes and checks changes before completing
+journal operations. Keep all journals and backups. Three stable process samples
+can catch immediate failures; they do not prove phone projection or long sessions.
 
-Setup grants the exact official CarLink app's Android 9 runtime and special
-access, battery exemption and its built-in USB auto-confirm service before
-launch. It saves original states and verifies grants and service binding.
-Preserve the permission journal beside the setup backup. Other accessibility
-services remain. [Grant scope and recovery](permissions.md).
+## 5. Handle pauses and failures
 
-Do not ask the owner to tap through CarLink permission pages. An unexpected
-standard runtime dialog is still reported distinctly as exit 3; inspect the
-actual screen and diagnose why the automatic stage did not cover it. Car/profile
-onboarding and phone-side authorization are separate from car-side permissions.
-Never guess an unknown screen or label it a crash without evidence.
+- **Exit 3 / `inspect_permission_prompt`:** keep the laptop connected. Inspect
+  the actual permission screen and diagnose the missing access. Normal CarLink
+  grants are automatic; do not start a generic permission walkthrough. After
+  resolving the specific issue, rerun the same setup command. An already observed
+  reboot is validated without requesting another one.
+- **Exit 2:** inspect `failed_stage`, `recovery`, `component_issues`, errors and
+  `next_action`. Automatic rollback may have succeeded; report installation as
+  failed even then. Diagnose the cause before attempting a new installation.
+- **USB loss or incomplete recovery:** preserve the original state, regain Device
+  mode and run `restore`. Do not create a fresh baseline over the failed cycle.
+- **Exit 130:** inspect status; an interruption may have occurred outside the
+  staged recovery handler.
+- **`inspect_configuration_drift`:** the current settings differ from the saved
+  completed setup. Inspect the difference before phone connection or recovery.
 
-### Failure or interruption
+Follow [recovery.md](recovery.md), including its stale-lock checks. Unknown
+replacement apps remain untouched; partial recovery must not be called complete.
 
-Exit **2** can contain a failed stage and nested `recovery` result. Recovery may
-have succeeded even though setup correctly still reports failure. Do not call it
-a completed install. If recovery is incomplete or USB disappeared, retain the
-journal, reconnect in Device mode and run `restore`. Do not automatically start
-a fresh install after rollback; first diagnose the failed stage. Exit **130**
-means an interruption outside the staged failure handler; also inspect status.
-[Recovery procedure, partial results and lock handling](recovery.md).
+## 6. Finish with the user
 
-## 7. Handoff and report
+Require `android_reboot_verified=true` and `next_action=phone_handoff` from
+successful setup. While the laptop remains connected, have the user check the
+large card/Home and available native controls. Complete available CarLink welcome
+and car settings after the command finishes. The [upstream setup flow](https://github.com/F-e-n-y-x/CarLink/blob/v1.0.7/app/src/main/java/com/carlink/app/ui/setup/SetupModel.kt)
+separates car selection from phone pairing. Inspect actual options; do not invent
+a profile or insist on completing a phone-dependent step before connecting it.
 
-After `next_action=phone_handoff`, have the owner verify the large CarLink
-card, Home return, absent duplicate icons and their usual native controls. Then
-ask for the physical laptop-disconnect/Host/phone sequence. Phone USB debugging
-is not needed. The phone connects directly to the car, not through the laptop.
+Then guide one action at a time: disconnect laptop → select **Host模式** → open
+CarLink → connect the phone. Wired projection uses the **regular charging/CarAuto
+USB port**. For wireless CarPlay follow CarLink's pairing flow with iPhone Wi-Fi
+and Bluetooth enabled. Use a cable for Android Auto. Phone USB debugging is not
+required. Review [Connect your phone](../README.md#connect-your-phone) and record
+projection, fullscreen, sound, touch, card/Home and native-control results.
 
-Use the regular charging/CarAuto USB port for the current CarLink configuration,
-as confirmed by the owner. iPhone worked with both cable and wireless CarPlay;
-Android wireless was unreliable. Use cable for Android Auto. Microphone/Gemini remains unresolved.
-A car-side USB prompt still required tapping despite the enabled service;
-record that limit and do not claim full USB prompt automation.
+A car-side USB prompt may still need a tap; enabling the service is not proof
+that every dialog is handled. Historical results and unresolved tests belong in
+[the test record](verified-findings.md).
 
-Report the interpreter/ADB paths, compatibility result, changed stages, backup
-location, Android reboot evidence and the owner's phone/native-control results.
-Keep read-back, observed UI, owner reports and untested items distinct. Do not
-claim a full ignition cycle, all vehicle functions, or the new unified workflow
-has been live-qualified based on earlier component tests.
-
-USB supervision stops when the laptop is unplugged. A launcher failure while
-still in Device mode can be diagnosed through authorized USB if Android/ADB is
-responsive. The route back to Device from Host with an unusable launcher has not
-been tested. Explain that boundary before representing this as unattended rescue.
+Report what changed, machine checks, what the user actually tried, remaining
+checks, the exact backup path and how to restore. Keep the interpreter/ADB paths
+and connection options with that record so later commands can reuse them.
+Supervision ends at laptop disconnection. Recovery requires responsive Android
+and authorized USB; a return from Host with an unusable launcher/menu is untested.

@@ -1,57 +1,66 @@
-# Verified findings
+# Tests on my Oshan X7
 
-These results concern the exact reference F202_MCA firmware, not every Oshan X7.
-Reference captures and the CarLink work below were recorded on **2026-11-02**.
+These results apply to my **F202_MCA** head unit, firmware
+**F202RHD_D1_20241022162756**, MCU **F202RHD_20240722_1**. They do not establish
+support for every Oshan X7. The CarLink observations below were recorded on
+**2026-11-02**.
 
-## Current CarLink results — 2026-11-02
+## What I tested
 
-| Result | Evidence | Limit |
-| --- | --- | --- |
-| Official CarLink 1.0.7 installed | Exact installed APK hash/version, original signing certificate and successful UI health check | Later releases need separate qualification |
-| Android Auto and CarPlay work fullscreen | Owner reports for both; actual 1920 × 720 projection captures | Screenshots do not prove every audio/touch/reconnect behavior |
-| iPhone wired and wireless CarPlay | Owner reports both worked perfectly, using iPhone 15 Pro Max / iOS 27 as reported | Long-duration reliability and all audio paths were not separately enumerated |
-| Android wireless | Owner reports unreliable operation | Wired AA remains the working option |
-| Current USB port | Owner identifies the regular charging/CarAuto USB port as the working port | Connector position and cable map are not recorded |
-| Factory Home card opens CarLink | Owner tested card and Home return | Other native controls were not exhaustively enumerated |
-| Launcher/fullscreen survive Android reboot | New boot identity, exact active/factory hashes, UID, default Home and layout read-back | A normal Android reboot is not an ignition cycle |
-| Automatic permissions persist after reboot | All six runtime grants, four app-ops and battery exemption read back; exact USB auto-confirm service bound to Android's system process after reboot | One car-side prompt still needed tapping after setup; its type is unconfirmed |
-| Direct public installation | Offline setup/recovery tests using official APK/launcher pins | Full fresh setup/restore cycle not yet car-qualified |
+| Test | Result |
+| --- | --- |
+| Wired Android Auto | Worked fullscreen |
+| Wired CarPlay | Worked fullscreen |
+| Wireless CarPlay | Worked with my iPhone 15 Pro Max, running iOS 27 as recorded at the time |
+| Wireless Android Auto | Unreliable |
+| Large CarLink card and factory Home | The card opened CarLink; Home returned to the car launcher |
+| Wired phone port | I used the regular charging/CarAuto USB port |
+| Car-side USB prompt | I still had to tap one prompt after automatic permissions/service setup; its exact dialog type was not established |
 
-The official APK SHA-256 is
-`16e8b98436a5c5f355aa4b49086e28d41bee9f9f874174658cafb682fd503e77`.
-The launcher SHA-256 is
-`ffc81db01bb7d1645b6a9efd9d23960cafd6b671ba51b88d3816794597b30285`.
-The app uses its own package-specific factory fullscreen value `0`; it is not
-a global resolution change. [Artifact pins](carlink-setup.md#artifact-pins).
+The screenshots show the fullscreen projection and launcher. They do not
+establish every audio, touch or reconnect behavior. I have not recorded a
+complete physical port/cable map.
 
-The five public screenshots predate the change to the official APK signature;
-code and UI asset payloads match. They remain evidence of those observed frames,
-not proof that a new permission automation path handled a phone attach.
-[Capture details](screenshots.md).
+## Recorded machine checks
 
-## Compatibility evidence
+- The head unit reported Android 9/API 28, ARM64/ARMv7 and a native 1920 × 720
+  screen. Existing `su 0` root access worked.
+- Official CarLink 1.0.7 was installed and checked by exact APK hash/version and
+  UI health. Its settings were restored during that work.
+- Factory/active launcher hashes, system/shared UID 1000, version 20240726,
+  default Home and CarLink's fullscreen value `0` were checked after a normal
+  Android reboot. The layout change is per-app, not a global resolution change.
+- Six runtime grants, four app-ops, battery exemption and the USB service's
+  binding to Android were read back after reboot.
 
-Android 9/API 28, ARM64/ARMv7 and native 1920 × 720 were read from the car.
-Firmware is `F202RHD_D1_20241022162756`; MCU is `F202RHD_20240722_1`.
-The exact factory APK, launcher update, system/shared UID 1000, version 20240726
-and default Home were checked. Existing `su 0` worked. Outer menu PIN 1111 was
-observed; the separate development-page default 3821 is code-only evidence.
-[Full profile](../profiles/f202-carlink.json) · [Car menu](car-menu.md).
+[Artifact identities](reference.md#artifact-pins) · [Permission scope](permissions.md).
+These checks establish saved settings and immediate app health; a bound service
+alone does not prove it handled a real phone prompt.
 
-## Remaining qualification
+## Screenshot provenance
 
-All configured runtime/special grants, battery exemption and the USB service
-binding were read back after a normal Android reboot. The subsequent owner
-phone test still needed a tap on one car-side prompt. It was described as USB/
-ADB-like, but its exact type was not established. USB prompt automation remains unresolved.
+The five [CarLink screenshots](screenshots.md) were captured on 2026-11-02 at
+1920 × 720. They predate the change from the earlier locally signed APK to the
+official signing identity. The recorded comparison found matching UI/code asset
+payloads. Keep them as evidence of the displayed frames, not a new official-build
+phone attach or permission-automation test. Hashes and captions are in the
+[capture manifest](images/carlink-reference.json); raw capture records remain private.
 
-Microphone/Gemini recognition remains unresolved. Siri/call audio, all sound
-paths, long-duration/repeated reconnect behavior, cold ignition and exhaustive
-native controls need separate observations. iPhone cable and wireless success
-and Android wireless unreliability are owner reports, independently of screenshots.
-The regular charging/CarAuto USB port is the current working phone port. Exact
-physical connector/cable mapping remains unrecorded.
+The factory-menu capture is dated 2026-10-26. I used the dialer code and outer
+PIN `1111`. The separate development-page default `3821` comes from factory-app
+code inspection; I have not tested entering it on the car. [Menu guide](car-menu.md).
 
-The shared-port laptop supervision ends in Host mode. Regaining Device mode
-with a broken launcher/menu has not been qualified. Recovery needs responsive
-Android/package management and authorized USB. [Test checklist](testing.md).
+## Still to test or resolve
+
+- Microphone/Gemini recognition remains unresolved. Siri/call audio and other
+  sound paths need separate observations.
+- Long sessions, repeated reconnects, cold ignition and a complete check of
+  native vehicle/media controls remain untested as a set.
+- The USB prompt still needs investigation; its exact type was not established.
+- The complete fresh installation → Android reboot → phone tests → restore cycle
+  has offline tests, but has not yet been completed on the car. Earlier component
+  tests do not replace this test.
+- Returning from Host to Device mode with an unusable launcher/menu has not been
+  tested. Recovery requires responsive Android and authorized USB.
+
+[Offline tests and next live checklist](testing.md) · [Recovery](recovery.md).

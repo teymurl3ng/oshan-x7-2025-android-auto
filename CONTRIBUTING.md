@@ -1,46 +1,44 @@
 # Contributing
 
-If you get this working on another Oshan X7, I'd like to hear what headunit and
-firmware you have. For now, I'm keeping this repo focused on the wired setup I
-got working on my car. The current reference configuration is CarLink with
-owner-confirmed fullscreen Android Auto and CarPlay. Public setup installs
-official CarLink directly; earlier journals retain their recovery compatibility.
+This project targets the exact head unit and firmware listed in the
+[compatibility reference](docs/reference.md#exact-compatibility). If you have a
+problem, include the installer version (`python3 oshan_x7.py --version`), command,
+error message, firmware/MCU versions and whether setup had started changing the
+car. Keep your backup. Redact serials, IP/MAC addresses, Wi-Fi names, account data
+and private paths; do not attach raw dumps or backups.
 
-If you find a problem, please include the tool version, command, mismatch/error message,
-firmware/MCU versions, and whether a device operation had started. Redact device
-serials, IP/MAC addresses, Wi-Fi names, account data, and local backup paths.
-Please don't attach raw dumps or your private backups.
+## Changes and tests
 
-Before I can call another firmware supported, I need evidence: exact device properties,
-firmware and MCU identifiers, factory package identities and hashes, existing root
-behavior, the actual fullscreen handler semantics, and successful wired projection.
-Document setup, a repeated run, reboot, restore, and retained access to factory
-controls on that device. The same model/year, or an AI saying it should work,
-doesn't establish that.
+Run `python3 -m unittest discover -s tests -v` for code changes. Cover meaningful
+failure paths as well as successful setup, including uncertain writes, missing
+USB, unexpected screens, lost root and partial recovery. Keep automatic failure
+recovery and explicit restore on the same engine.
 
-Please don't remove checks just to get a different unit through setup. Don't submit proprietary factory
-APKs, phone data, credentials, or broad debloat lists. The original code is MIT;
-upstream apps retain their own licenses.
+Preserve original journals and compatibility with older backups. An app or
+launcher update already present before setup must never be claimed or removed
+by a new installation. Keep legacy profiles/patches needed for recovery even
+though they are not part of the current installation procedure.
 
-The supported launcher is distributed as a pinned binary patch applied to the
-owner's matching original APK. Keep both full APKs and all signing keys private.
-Do not change an artifact pin without inspecting the resulting code and
-qualifying that exact build on the car. Preserve legacy backup compatibility,
-unchanged factory-base checks and ownership on rollback; an update that was
-already present before setup must never be claimed or removed by a new cycle.
+Do not weaken identity checks to accept a different unit. Supporting another
+firmware requires exact device properties, firmware/MCU identifiers, factory
+package identities/hashes, existing root behavior and fullscreen semantics,
+followed by actual projection, repeated setup, reboot, restore and factory-control
+tests. Model/year or an AI prediction is insufficient.
 
-Keep upstream licensing and corresponding-source references with the CarLink
-permission delta. Do not publish complete APKs or bundled authentication inputs.
-Review screenshots for phone/account/location details; keep raw capture records
-private and publish only selected frames with accurate captions/provenance.
+## Launcher and published material
 
-Run `python3 -m unittest discover -s tests -v` for code changes. Tests must exercise
-failure paths and the limits on device mutations as well as successful setup.
+Read [launcher.md](docs/launcher.md) before launcher changes. Distribute only
+verified deltas against the matching factory APK; keep full APKs and signing keys
+private. Inspect and test a new build before changing its pins. Preserve the
+factory-base checks and safe system-update rollback.
 
-For staged workflow changes, keep automatic failure recovery and explicit restore
-on the same engine. Test lost USB before/after uncertain writes, disabled or
-unknown receiver identity, lost root, UI/permission pauses and partial restores.
-Never report full recovery while a step is blocked. Preserve component ownership
-and strict setup gates; recovery eligibility is a separate decision. Use the
-[evidence table](docs/verified-findings.md) and [live checklist](docs/testing.md)
-when distinguishing simulated results from car qualification.
+Write instructions directly to the reader. Use first person for my recorded
+car tests and distinguish them from machine checks. Keep results in
+[verified-findings.md](docs/verified-findings.md), with future checks in
+[testing.md](docs/testing.md). Do not repeat development history in installation
+steps or turn an offline test into a live-test claim.
+
+Review screenshots for phone/account/location details. Publish selected frames
+with accurate captions and provenance; keep raw capture records private.
+Do not submit proprietary APKs, credentials or broad debloat lists. Installer
+code/docs use MIT; retain the [upstream credits and licenses](THIRD_PARTY_NOTICES.md).

@@ -16,19 +16,22 @@ def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--factory', type=Path, required=True)
     parser.add_argument('--modified', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--bsdiff', default=shutil.which('bsdiff'))
-    args = parser.parse_args()
-    pin = json.loads((ROOT / 'profiles/f202-mca-rhd-20241022.json').read_text())['launcher']
+    parser.add_argument('--profile', choices=('carlink', 'openhu'), default='carlink',
+                        help='Launcher to reconstruct (default: carlink; openhu is for legacy recovery)')
+    args = parser.parse_args(argv)
+    profile = 'f202-carlink.json' if args.profile == 'carlink' else 'f202-mca-rhd-20241022.json'
+    pin = json.loads((ROOT / 'profiles' / profile).read_text(encoding='utf-8'))['launcher']
     if not args.bsdiff:
         parser.error('Install bsdiff from your trusted OS package manager or pass --bsdiff.')
     for path, expected in ((args.factory, pin), (args.modified, pin['update'])):
         if path.stat().st_size != expected['bytes'] or sha(path) != expected['sha256']:
-            parser.error('Input does not match the already qualified launcher: ' + str(path))
+            parser.error('Input does not match the tested ' + args.profile + ' launcher: ' + str(path))
     if args.output.exists():
         parser.error('Output exists; preserve it and choose another path.')
     args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -38,7 +41,7 @@ def main():
         subprocess.run([args.bsdiff, str(args.factory), str(args.modified), temporary], check=True, timeout=180)
         output = Path(temporary)
         if sha(output) != pin['update']['patch_sha256'] or output.stat().st_size != pin['update']['patch_bytes']:
-            parser.error('Generated patch differs from the qualified artifact; nothing published.')
+            parser.error('Generated patch differs from the recorded artifact; nothing published.')
         os.replace(temporary, args.output)
     finally:
         if os.path.exists(temporary):

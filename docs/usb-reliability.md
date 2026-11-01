@@ -1,30 +1,48 @@
-# USB and wireless connection notes
+# Connection troubleshooting
 
-The current CarLink tests use the **regular charging/CarAuto USB port**, as
-confirmed by the owner. The exact connector position/cable map has not been
-photographed or inventoried.
-Use a suitable data cable and a direct phone-to-car connection.
+The shared USB role depends on what is connected:
 
-| Mode | Owner-observed result |
-| --- | --- |
-| iPhone CarPlay with cable | Worked perfectly |
-| iPhone CarPlay wirelessly | Worked perfectly |
-| Android Auto with cable | Working, fullscreen |
-| Android Auto wirelessly | Unreliable |
+| Connection | Car role | Other device |
+| --- | --- | --- |
+| Laptop for installation, reboot check or restore | **Device模式** | Phone disconnected |
+| Phone for wired AA/CarPlay | **Host模式** | Laptop disconnected |
 
-Use **Device模式** for laptop ADB and keep it selected through setup/reboot.
-Disconnect the laptop and select **Host模式** for the phone. [Car menu](car-menu.md).
+[How to switch roles](car-menu.md) · [My connection test results](verified-findings.md).
 
-Setup grants CarLink's runtime/special access and enables its built-in USB
-confirmation service automatically. One car-side prompt still needed tapping
-in the subsequent phone test. Its exact dialog type was not established; the
-USB prompt issue remains unresolved. [Permission scope](permissions.md).
+## Laptop cannot connect
 
-For a failed cable connection, distinguish no device, an access/chooser prompt,
-a session startup failure and a later disconnect. Check USB role, data cable,
-app identity and authorized ADB/host permissions before changes. Do not enable
-network ADB as a workaround. Observe touch, sound and reconnect separately.
+Check the USB data cable, Device mode and whether the laptop's OS detects the
+car. A charging-only cable cannot provide ADB access.
 
-Owner-reported wireless success is a functional observation, not a long-duration
-reliability or cold-ignition qualification. Microphone recognition remains
-unresolved. Laptop supervision ends when it is unplugged.
+- **Unauthorized:** accept this trusted laptop's debugging request on the car.
+- **No device/offline:** check role, cable/port, OS detection and the selected ADB
+  server. Reuse a working server; do not blindly kill it.
+- **Access denied/missing driver:** resolve the laptop's USB permissions or signed
+  OEM driver. [Platform-specific guidance](agent-setup.md#3-establish-authorized-usb).
+- **Multiple devices:** disconnect other ADB devices or explicitly select the
+  car's verified serial.
+
+Do not enable network ADB as a workaround. Once authorized, keep the laptop
+connected in Device mode through the installer and Android reboot check.
+
+## Phone does not project
+
+Use **Host模式**, open CarLink and connect the unlocked phone directly with a
+suitable data cable. I used the **regular charging/CarAuto USB port**. There is
+no recorded connector-position map; these instructions do not assume left/right
+placement or a particular cable connector.
+
+Distinguish what happens: no detection, an access/default-app prompt, failure to
+start a session, or a later disconnect. Inspect prompts on both the car and
+phone. Setup handles CarLink's Android permissions, but a car-side USB prompt
+may still need your response. Phone trust/pairing remains separate.
+
+For wireless CarPlay, enable Bluetooth and Wi-Fi on the iPhone and follow
+CarLink's pairing flow. Wireless Android Auto was unreliable in my tests; use a
+cable. Phone USB debugging, developer mode and an Android Auto headunit server
+are not needed for this wired workflow.
+
+If laptop diagnostics are needed, **disconnect the phone → select Device模式 →
+reconnect the laptop**, then run `status` with the original connection options
+and state directory. Do not try ADB commands while the shared port is serving the
+phone. Follow [recovery](recovery.md) if setup was interrupted.

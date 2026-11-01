@@ -38,6 +38,12 @@ def run(core, adb, state_dir, args):
                     trial.require_owned(trial.inspect(journal)[1])
                     with configuration(core):
                         import carlink_permissions
+                        report = core.inspect(adb)
+                        core.require_compatible(report)
+                        if (report["fullscreen_value"] != 0 or report["carauto"]["enabled"] != 3 or
+                                report["launcher"]["build"] != "carlink"):
+                            raise core.SetupError("The existing configuration changed. Use status or restore "
+                                                  "with the original state directory before setup.")
                         permission_record = carlink_permissions.path(core, adb, state_dir)
                         if permission_record.exists():
                             previous = carlink_permissions.load(core, adb, state_dir)
@@ -47,7 +53,8 @@ def run(core, adb, state_dir, args):
                                 return {"status": "already_configured", "device_writes": False,
                                         "carlink_permissions": current, "projection_tested": False,
                                         "android_reboot_verified": bool(previous.get("android_reboot_verified")),
-                                        "next_action": "phone_handoff"}, 0
+                                        "next_action": "phone_handoff" if previous.get("android_reboot_verified")
+                                                       else "rerun_setup_with_reboot_check"}, 0
                         result = carlink_permissions.apply(core, adb, state_dir)
                         core.healthy_launch(adb, core.PROFILE["launcher"]["home"])
                         core.healthy_launch(adb, core.MAIN_ACTIVITY)
@@ -55,7 +62,8 @@ def run(core, adb, state_dir, args):
                             permission_journal = carlink_permissions.load(core, adb, state_dir)
                             if not permission_journal.get("android_reboot_verified"):
                                 core.operation(carlink_permissions.path(core, adb, state_dir), permission_journal,
-                                               "android_reboot", lambda: core.reboot_check(adb))
+                                               "android_reboot", lambda: core.reboot_check(adb,
+                                                   carlink_permissions.path(core, adb, state_dir), permission_journal))
                                 permission_journal["android_reboot_verified"] = True
                                 permission_journal["phase"] = "configured"
                                 core.write_json(carlink_permissions.path(core, adb, state_dir), permission_journal)
@@ -75,6 +83,24 @@ def run(core, adb, state_dir, args):
                             result["carlink_permissions"] = carlink_permissions.snapshot(core, adb)
                     except core.SetupError as exc:
                         result["carlink_permissions"] = {"ready": False, "error": str(exc)}
+                if result.get("primary_receiver") == "carlink":
+                    with configuration(core):
+                        report = core.inspect(adb, recovery=args.command == "status")
+                        result.update(core.public_report(report))
+                        result["configured"] = core.configured(report)
+                        permission_record = carlink_permissions.path(core, adb, state_dir)
+                        permission_journal = (carlink_permissions.load(core, adb, state_dir)
+                                              if permission_record.exists() else {})
+                        result["android_reboot_verified"] = bool(
+                            permission_journal.get("android_reboot_verified") and
+                            not permission_journal.get("restored"))
+                    if not result["configured"]:
+                        result["next_action"] = "inspect_configuration_drift"
+                    elif not result["android_reboot_verified"]:
+                        result["next_action"] = "rerun_setup_with_reboot_check"
+                    if not report["compatible"]:
+                        result["next_action"] = "diagnose_identity_mismatch_no_writes"
+                        return result, 2
             return result, 2 if result.get("trial_eligible") is False else 0
     backup = core.backup_path(adb, state_dir)
     if backup.exists():

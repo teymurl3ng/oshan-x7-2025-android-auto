@@ -1,6 +1,6 @@
 """Journaled Android 9 grants and CarLink's own USB-dialog automation.
 
-Called automatically by setup before CarLink's first launch. Never enables
+Called automatically before the installer opens CarLink. Never enables
 network ADB or changes the system USB role, and preserves other services.
 """
 import json
@@ -58,16 +58,22 @@ def service_bound(adb):
     return False
 
 
-def snapshot(core, adb):
-    if core.RECEIVER != PACKAGE or not core.receiver_state(adb).get("verified"):
+def snapshot(core, adb, allow_absent=False):
+    receiver = core.receiver_state(adb)
+    absent = receiver.get("installed") is False
+    if (core.RECEIVER != PACKAGE or not receiver.get("verified") or
+            (absent and not allow_absent)):
         raise core.SetupError("Automatic permissions require the exact official CarLink APK.")
-    raw = adb.shell("dumpsys", "package", PACKAGE)
+    # An absent user-0 app has no active grants to restore; global service and
+    # battery entries still need inspection. Do not mutate absent package access.
+    raw = adb.shell("dumpsys", "package", PACKAGE) if not absent else ""
     requested = raw.split("requested permissions:", 1)
-    if len(requested) != 2 or any(p not in requested[1].split("install permissions:", 1)[0] for p in RUNTIME):
+    if not absent and (len(requested) != 2 or any(
+            p not in requested[1].split("install permissions:", 1)[0] for p in RUNTIME)):
         raise core.SetupError("CarLink's declared Android 9 permissions differ from the tested release.")
     grants = dict(re.findall(r"(android\.permission\.[A-Z_]+): granted=(true|false)", raw))
     ops = {}
-    for op in APPOPS:
+    for op in (() if absent else APPOPS):
         output = adb.shell("appops", "get", "--user", "0", PACKAGE, op, root=True)
         explicit = re.search(r"(?:^|\n)" + op + r":\s*(\w+)", output)
         default = re.search(r"Default mode:\s*(\w+)", output)
@@ -83,11 +89,12 @@ def snapshot(core, adb):
     battery = adb.shell("dumpsys", "deviceidle", "whitelist", "=" + PACKAGE, root=True)
     if battery not in ("true", "false"):
         raise core.SetupError("Cannot read CarLink's battery exemption.")
-    bound = SERVICE in listed and enabled == "1" and service_bound(adb)
-    result = {"runtime": {p: grants.get(p) == "true" for p in RUNTIME}, "appops": ops,
+    bound = not absent and SERVICE in listed and enabled == "1" and service_bound(adb)
+    result = {"installed": not absent,
+              "runtime": {p: grants.get(p) == "true" for p in RUNTIME}, "appops": ops,
               "accessibility_services": enabled_services, "accessibility_enabled": enabled,
               "battery_whitelisted": battery == "true", "usb_service_bound": bound}
-    result["ready"] = (all(result["runtime"].values()) and all(m == "allow" for m in ops.values()) and
+    result["ready"] = (not absent and all(result["runtime"].values()) and all(m == "allow" for m in ops.values()) and
                        SERVICE in listed and enabled == "1" and bound and result["battery_whitelisted"])
     return result
 
@@ -115,17 +122,31 @@ def load(core, adb, state_dir):
             type(baseline.get("battery_whitelisted")) is not bool):
         raise core.SetupError("CarLink permission journal identity or baseline is invalid; preserve it.")
     services(core, baseline.get("accessibility_services"))
+    core.validate_reboot_record(value)
     return value
 
 
-def preflight(core, adb):
+def preflight(core, adb, allow_absent=False):
     report = core.inspect(adb, recovery=True)
     if not report["recovery_eligible"]:
-        raise core.SetupError("Permission setup refused: " + "; ".join(report["mismatches"]))
+        raise core.SetupError("CarLink permission operation refused: " + "; ".join(report["mismatches"]))
     if not report["root_available"] or not report["boot_completed"]:
-        raise core.SetupError("Permission setup needs the firmware's existing root and completed boot.")
-    if not report["receiver"].get("installed") or not report["receiver"].get("verified"):
+        raise core.SetupError("CarLink permission changes need the firmware's existing root and completed boot.")
+    if (not report["receiver"].get("verified") or
+            (not report["receiver"].get("installed") and not allow_absent)):
         raise core.SetupError("Unknown or absent CarLink APK; its permissions will not be changed.")
+
+
+def verified_action(core, adb, name, action, matches, *, allow_absent=False, wait=False):
+    action()
+    deadline = time.monotonic() + (12 if wait else 0)
+    while True:
+        state = snapshot(core, adb, allow_absent=allow_absent)
+        if matches(state):
+            return {"verified": True}
+        if time.monotonic() >= deadline:
+            raise core.SetupError("CarLink permission change " + name + " did not match the requested state.")
+        time.sleep(.5)
 
 
 def apply(core, adb, state_dir):
@@ -142,19 +163,23 @@ def apply(core, adb, state_dir):
                    "original": snapshot(core, adb), "operations": [], "restored": False, "phase": "backed_up"}
         core.write_json(record, journal)
     current = snapshot(core, adb)
-    def step(name, action):
+    def step(name, action, matches, wait=False):
         preflight(core, adb)
-        return core.operation(record, journal, name, action)
+        return core.operation(record, journal, name,
+                              lambda: verified_action(core, adb, name, action, matches, wait=wait))
     for permission in RUNTIME:
         if not current["runtime"][permission]:
             step("grant:" + permission,
-                 lambda p=permission: adb.shell("pm", "grant", "--user", "0", PACKAGE, p, root=True))
+                 lambda p=permission: adb.shell("pm", "grant", "--user", "0", PACKAGE, p, root=True),
+                 lambda state, p=permission: state["runtime"][p])
     for op in APPOPS:
         if current["appops"][op] != "allow":
             step("appop:" + op,
-                 lambda name=op: adb.shell("appops", "set", "--user", "0", PACKAGE, name, "allow", root=True))
+                 lambda name=op: adb.shell("appops", "set", "--user", "0", PACKAGE, name, "allow", root=True),
+                 lambda state, name=op: state["appops"][name] == "allow")
     if not current["battery_whitelisted"]:
-        step("battery", lambda: adb.shell("dumpsys", "deviceidle", "whitelist", "+" + PACKAGE, root=True))
+        step("battery", lambda: adb.shell("dumpsys", "deviceidle", "whitelist", "+" + PACKAGE, root=True),
+             lambda state: state["battery_whitelisted"])
     def enable_usb():
         # Merge immediately before writing, preserving every unrelated service.
         raw = setting(adb, "enabled_accessibility_services")
@@ -164,7 +189,7 @@ def apply(core, adb, state_dir):
             put_setting(adb, "enabled_accessibility_services", ":".join(listed))
         put_setting(adb, "accessibility_enabled", "1")
     if SERVICE not in services(core, current["accessibility_services"]) or current["accessibility_enabled"] != "1":
-        step("usb_auto_confirm", enable_usb)
+        step("usb_auto_confirm", enable_usb, lambda state: state["usb_service_bound"], wait=True)
     deadline = time.monotonic() + 12
     while True:
         current = snapshot(core, adb)
@@ -187,13 +212,15 @@ def restore(core, adb, state_dir):
     journal = load(core, adb, state_dir)
     if journal["restored"]:
         return {"unchanged": True}
-    preflight(core, adb)
+    preflight(core, adb, allow_absent=True)
     original = journal["original"]
     owned = {x["name"] for x in journal["operations"]}
-    def step(name, action):
-        preflight(core, adb)
-        return core.operation(record, journal, "restore:" + name, action)
+    def step(name, action, matches):
+        preflight(core, adb, allow_absent=True)
+        return core.operation(record, journal, "restore:" + name,
+                              lambda: verified_action(core, adb, "restore:" + name, action, matches, allow_absent=True))
     if "usb_auto_confirm" in owned:
+        expected = {}
         def undo_usb():
             current = services(core, setting(adb, "enabled_accessibility_services"))
             before = services(core, original["accessibility_services"])
@@ -201,23 +228,32 @@ def restore(core, adb, state_dir):
                 current = [x for x in current if x != SERVICE]
                 value = original["accessibility_services"] if current == before else ":".join(current)
                 put_setting(adb, "enabled_accessibility_services", value)
+            expected["accessibility_services"] = current
+            expected["accessibility_enabled"] = setting(adb, "accessibility_enabled")
             if not current or current == before:
                 put_setting(adb, "accessibility_enabled", original["accessibility_enabled"])
-        step("usb_auto_confirm", undo_usb)
-    current = snapshot(core, adb)
-    for op in APPOPS:
+                expected["accessibility_enabled"] = original["accessibility_enabled"]
+        step("usb_auto_confirm", undo_usb, lambda state:
+             services(core, state["accessibility_services"]) == expected["accessibility_services"] and
+             state["accessibility_enabled"] == expected["accessibility_enabled"])
+    current = snapshot(core, adb, allow_absent=True)
+    for op in (APPOPS if current["installed"] else ()):
         if "appop:" + op in owned and current["appops"][op] != original["appops"][op]:
             step("appop:" + op, lambda name=op: adb.shell("appops", "set", "--user", "0", PACKAGE,
-                                                        name, original["appops"][name], root=True))
+                                                        name, original["appops"][name], root=True),
+                 lambda state, name=op: state["installed"] and state["appops"][name] == original["appops"][name])
     if "battery" in owned and not original["battery_whitelisted"] and current["battery_whitelisted"]:
-        step("battery", lambda: adb.shell("dumpsys", "deviceidle", "whitelist", "-" + PACKAGE, root=True))
-    for permission in RUNTIME:
+        step("battery", lambda: adb.shell("dumpsys", "deviceidle", "whitelist", "-" + PACKAGE, root=True),
+             lambda state: not state["battery_whitelisted"])
+    for permission in (RUNTIME if current["installed"] else ()):
         if "grant:" + permission in owned and not original["runtime"][permission] and current["runtime"][permission]:
-            step("grant:" + permission, lambda p=permission: adb.shell("pm", "revoke", "--user", "0", PACKAGE, p, root=True))
-    after = snapshot(core, adb)
-    if any(after["runtime"][p] != original["runtime"][p] for p in RUNTIME if "grant:" + p in owned):
+            step("grant:" + permission,
+                 lambda p=permission: adb.shell("pm", "revoke", "--user", "0", PACKAGE, p, root=True),
+                 lambda state, p=permission: state["installed"] and not state["runtime"][p])
+    after = snapshot(core, adb, allow_absent=True)
+    if after["installed"] and any(after["runtime"][p] != original["runtime"][p] for p in RUNTIME if "grant:" + p in owned):
         raise core.SetupError("Runtime permission restore did not verify.")
-    if any(after["appops"][op] != original["appops"][op] for op in APPOPS if "appop:" + op in owned):
+    if after["installed"] and any(after["appops"][op] != original["appops"][op] for op in APPOPS if "appop:" + op in owned):
         raise core.SetupError("Special-access restore did not verify.")
     if "battery" in owned and after["battery_whitelisted"] != original["battery_whitelisted"]:
         raise core.SetupError("Battery exemption restore did not verify.")

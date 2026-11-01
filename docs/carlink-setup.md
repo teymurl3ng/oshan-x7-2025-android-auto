@@ -1,82 +1,105 @@
-# CarLink setup
+# Manual installation
 
-The public path installs official CarLink directly on the exact supported
-factory firmware. No other receiver is an installation prerequisite.
-[Car menu and USB roles](car-menu.md) · [Laptop preparation](agent-setup.md).
+These instructions use the same installer as the AI-assisted workflow. Start on
+the laptop you will connect directly to the car. You need internet access for
+tools and the CarLink download, and a suitable USB data cable.
 
-## Run setup
+Check the [supported firmware](reference.md#exact-compatibility). The installer
+uses the head unit's existing factory root access (`su 0`); it does not install
+root or flash firmware.
 
-With the laptop authorized over USB in **Device模式**:
+## 1. Prepare the laptop
+
+[Download and extract the repository ZIP](https://github.com/teymurl3ng/oshan-x7-2025-android-auto/archive/refs/heads/main.zip),
+or reuse your existing copy. Keep any existing `.oshan-x7` folder and custom
+backups. Git is not required.
+
+Install [Python 3.10+](https://www.python.org/downloads/) if necessary. Open a
+terminal in the repository folder. Commands below use `python3`; on Windows,
+use `py -3` or the full path to your working Python executable.
 
 ```sh
+python3 -c "import sys; print(sys.executable); print(sys.version); raise SystemExit(sys.version_info < (3, 10))"
 python3 prepare.py --json
-python3 oshan_x7.py check --json
-python3 oshan_x7.py setup --reboot-check --json
 ```
 
-Use the same interpreter, ADB executable/server port, USB target and state
-directory for subsequent commands. Windows uses `py -3`. Unknown firmware,
-launcher builds or app replacements stop setup; there is no force flag.
+Preparation finds or downloads ADB, the tool used to communicate over USB. It
+prints the verified executable's path. Use that path with `--adb` in subsequent
+commands; it does not need to be added to PATH. See [tool setup](agent-setup.md#2-prepare-python-and-adb)
+if preparation fails.
 
-Setup verifies the official APK and launcher patch before writes, saves the
-original settings and factory launcher, installs CarLink if absent, applies
-its permissions automatically, checks UI health, disables CarAuto, sets
-CarLink's factory fullscreen value to `0`, installs the pinned launcher update,
-and verifies the configured state through a normal Android reboot. Every
-mutation is recorded before execution and checked afterwards.
+## 2. Connect the laptop to the car
 
-CarLink's runtime and special permissions, battery exemption and its own
-USB auto-confirm accessibility service are included automatically. Other
-accessibility services remain enabled. One car-side prompt still needed tapping
-in the owner's later phone test; full USB prompt automation is unresolved.
-[Grant scope and recovery](permissions.md).
+Park the car and keep it powered. Leave your phone disconnected. If this laptop
+already has working, authorized USB access, skip the menu steps.
 
-The factory Home card reads **CarLink / CarPlay + Android Auto** and targets
-`com.carlink.app/com.carlink.app.ui.HomeActivity`. Factory Home/Back overlays,
-media and vehicle controls remain. Duplicate receiver/launcher menu entries
-are filtered. The tool does not root or flash the car, edit firmware partitions,
-enable network ADB or install Google services.
+1. On the **car's Phone dial pad**, enter **`*#*#888`**, tap **Call**, then enter
+   **`1111`**. Open **`开发模式` (Development mode)**.
+2. If that page separately asks for a PIN, its default in the factory app's code
+   is **`3821`**. I have not tested entering this second PIN on the car; a changed
+   password can override it. Stop if rejected.
+3. Tap **Settings**, then Android **System → Advanced → Developer options** and
+   enable **USB debugging / `USB 调试`**. If Developer options is hidden, tap
+   **Build number** seven times in **About device/tablet** first.
+4. Return to `开发模式`, select **Device模式**, connect the laptop with a USB data
+   cable, and accept **Allow USB debugging** for this trusted laptop if prompted.
 
-Complete car/profile onboarding if shown. Once the reboot check passes,
-disconnect the laptop, select **Host模式** and connect a phone with a data cable.
-Check actual AA/CarPlay, fullscreen, touch, sound, the large card, Home and native
-controls. Machine foreground checks do not establish these phone behaviors.
+[Car menu pictures](car-menu.md) show the controls. Keep **Device模式** selected
+throughout installation and the Android reboot. If the laptop cannot see an
+authorized device, resolve the [USB connection](usb-reliability.md#laptop-cannot-connect)
+before proceeding.
 
-## Artifact pins
+## 3. Check and install
 
-| Artifact | Bytes | SHA-256 |
-| --- | ---: | --- |
-| Official CarLink 1.0.7 | 16,747,592 | `16e8b98436a5c5f355aa4b49086e28d41bee9f9f874174658cafb682fd503e77` |
-| Factory launcher base | 8,256,512 | `0c50bad53fa2116e98928c74be78e1b9609a1d3f73d3ee42726b001ae7ddefb0` |
-| CarLink launcher update | 8,274,207 | `ffc81db01bb7d1645b6a9efd9d23960cafd6b671ba51b88d3816794597b30285` |
-| Factory-to-CarLink BSDIFF | 4,670,690 | `44399ba3e6aecf8c8d37fd3ddf494c7253b8e314ff6b222835303c5a85b2f7b7` |
-
-The app comes unchanged from the [official v1.0.7 release](https://github.com/F-e-n-y-x/CarLink/releases/tag/v1.0.7).
-Its signing certificate SHA-256 is
-`037468ca5beb70ea5f68543329b03368247dfb393d3f626a6b472d10e5657d21`.
-The installer accepts only the exact pinned APK; official later updates still
-require qualification and new pins before this installer will adopt them.
-
-The launcher is reconstructed locally from the verified factory APK. Only
-binary/source deltas are distributed; full APKs and signing inputs stay private.
-[Setup profile](../profiles/f202-carlink.json) ·
-[Launcher pins](../profiles/f202-carlink-launcher.json) ·
-[Source changes](../patches/launcher-carlink-source.patch).
-
-## Recovery
+Replace `/path/to/adb` with the executable returned by preparation:
 
 ```sh
-python3 oshan_x7.py status --json
-python3 oshan_x7.py restore --json
+python3 oshan_x7.py check --adb "/path/to/adb" --json
 ```
 
-Reuse the original state directory and connection options. Recovery rolls back
-its owned launcher update, layout, permissions and CarAuto state, then removes
-CarLink only if this cycle installed it. Preexisting apps are retained.
-Older journals are dispatched to their matching recovery engine automatically;
-a new public setup never installs an older receiver to reach CarLink.
-[Recovery details](recovery.md).
+Stop if the check reports a mismatch. If compatible, run:
 
-The direct-from-factory sequence is offline-tested. Component installation,
-fullscreen, launcher/card/Home and normal Android reboot have live evidence;
-a complete fresh setup/restore cycle remains pending. [Evidence](verified-findings.md).
+```sh
+python3 oshan_x7.py setup --reboot-check --adb "/path/to/adb" --json
+```
+
+If you need `--adb-port`, `--serial` or `--state-dir`, pass the same values to
+check, setup, status and restore. [Command reference](reference.md).
+
+Setup downloads and verifies **CarLink 1.0.7**, saves original settings and the
+factory launcher, then:
+
+1. Checks that factory Home opens correctly.
+2. Installs CarLink if absent, grants its permissions automatically and checks
+   that the app opens.
+3. Disables CarAuto and sets CarLink's fullscreen layout.
+4. Installs the verified launcher update with the large CarLink card.
+5. Checks the resulting settings and verifies them again after an Android reboot.
+
+The factory launcher APK and Home/Back overlays remain. Setup uses no network
+ADB or Google services. [Permission scope](permissions.md) · [Launcher details](launcher.md).
+
+Keep the laptop connected until the command finishes. Normal CarLink permissions
+need no manual walkthrough. If setup pauses on an unexpected permission screen,
+inspect the screen and diagnose the missing access before responding. A failed
+setup may automatically restore its changes; that is not a completed installation.
+Use the reported status and [recovery guide](recovery.md).
+
+For a previously downloaded CarLink APK, add `--apk /path/to/CarLink-1.0.7.apk`.
+It must match the same [release hash and size](reference.md#artifact-pins).
+
+## 4. Check the result and connect your phone
+
+Proceed only when setup reports `android_reboot_verified=true` and
+`next_action=phone_handoff`. Keep the laptop connected while you check the large
+card, Home return and available native controls. Complete any welcome/car
+settings CarLink shows; if it reaches phone pairing, continue after connecting
+your phone. Inspect the actual options rather than guessing a profile.
+
+Then follow [Connect your phone](../README.md#connect-your-phone): disconnect
+the laptop, select Host mode and connect/pair the phone. Test projection and
+controls yourself; an app launch is not a phone test.
+
+Keep the reported backup folder. Installation normally uses `.oshan-x7` beside
+the script. [Restore instructions](recovery.md) explain how to reconnect the
+laptop and undo this installation.

@@ -84,8 +84,10 @@ def observe(adb, name, baseline=None, foreground=False, timeout=12, samples=3, e
                 r"(?:com\.android\.packageinstaller|com\.google\.android\.packageinstaller|"
                 r"com\.android\.permissioncontroller|com\.google\.android\.permissioncontroller)"
                 r"/.*GrantPermissionsActivity", activity):
-            raise PermissionsPending("Accept the visible app permission prompt on the car, "
-                                     "then rerun the same setup command with the laptop connected.")
+            raise PermissionsPending("An unexpected app permission screen is visible on the car. "
+                                     "Keep the laptop connected in Device mode. Inspect the screen and "
+                                     "diagnose the missing permission before choosing an action; "
+                                     "then rerun the same setup command.")
         foreground_ok = not foreground or (activity and activity.split("/")[0] == name)
         if expected_activity:
             def expanded(component):

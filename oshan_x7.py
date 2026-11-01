@@ -35,6 +35,7 @@ MAIN_ACTIVITY = RECEIVER + "/com.andrerinas.openheadunit.main.MainActivity"
 PROFILE = json.loads(PROFILE_PATH.read_text(encoding="utf-8"))
 ENABLE_COMMANDS = {0: "default-state", 1: "enable", 2: "disable",
                    3: "disable-user", 4: "disable-until-used"}
+BOOT_ID = r"[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}"
 
 
 class SetupError(Exception):
@@ -113,7 +114,7 @@ class ADB:
                                     encoding="utf-8", errors="replace", timeout=timeout)
         except FileNotFoundError as exc:
             raise SetupError("adb is missing. Run prepare.py to download official Platform Tools, "
-                             "or have your agent follow docs/agent-setup.md.") from exc
+                             "following docs/agent-setup.md if preparation fails.") from exc
         except subprocess.TimeoutExpired as exc:
             raise SetupError("ADB timed out. Reconnect the laptop by USB, then run status or restore.") from exc
         if result.returncode and not allow_failure:
@@ -143,7 +144,7 @@ class ADB:
             if len(ready) != 1:
                 raise SetupError("Connect exactly one authorized USB device (the car), or use --serial. "
                                  "Disconnect phones/emulators. Accept the car's debugging prompt. "
-                                 "If your existing ADB server uses 5038, add --adb-port 5038.")
+                                 "If using a custom local ADB server, pass its port with --adb-port.")
             self.serial = ready[0][0]
         return self.serial
 
@@ -337,7 +338,8 @@ def inspect(adb, recovery=False, launcher_update=None):
     try:
         root_available = bool(re.search(r"\buid=0\b", adb.shell("id", root=True)))
         if not root_available:
-            raise SetupError("Existing 'su 0' access is unavailable. Do not root or flash the car.")
+            raise SetupError("Required factory root access ('su 0') is unavailable. "
+                             "This installer cannot add root or flash firmware.")
         xml = adb.shell("cat", PREFS, root=True)
         layout = parse_layout(xml)
         prefs_readable = True
@@ -551,7 +553,14 @@ def load_backup(path, adb):
             raise SetupError("Backup contains an invalid original launcher identity.")
     elif any(e["name"] == "install_launcher" for e in value["operations"]):
         raise SetupError("Legacy backup cannot own a launcher installation.")
+    validate_reboot_record(value)
     return value
+
+
+def validate_reboot_record(journal):
+    for key in ("reboot_from_boot_id", "observed_reboot_boot_id"):
+        if key in journal and (not isinstance(journal[key], str) or not re.fullmatch(BOOT_ID, journal[key])):
+            raise SetupError("Invalid reboot identity in the original journal; preserve it.")
 
 
 def create_backup(path, adb, report):
@@ -736,11 +745,11 @@ def _restore_locked(adb, path, journal):
 
     if not original["receiver"]["installed"] and touched(journal, "install_receiver"):
         def remove_receiver():
-            if not home_ok or not carauto_ok or not permissions_ok:
-                raise SetupError("Receiver retained until Home, CarAuto and permission recovery verify successfully.")
             current = receiver_state(adb)
             if not current["installed"]:
                 return {"unchanged": True}
+            if not home_ok or not carauto_ok or not permissions_ok:
+                raise SetupError("Receiver retained until Home, CarAuto and permission recovery verify successfully.")
             if not current["verified"]:
                 raise SetupError("Receiver identity changed; refusing to remove an unknown APK.")
             if not recovery_report(adb)["root_available"]:
@@ -767,13 +776,20 @@ def _restore_locked(adb, path, journal):
     return result
 
 
-def reboot_check(adb):
+def reboot_check(adb, path=None, journal=None):
     """Reboot Android once, keep USB supervision, then verify the configured state/UI."""
-    previous = adb.shell("cat", "/proc/sys/kernel/random/boot_id")
-    boot_pattern = r"[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}"
-    if not re.fullmatch(boot_pattern, previous):
+    journal = {} if journal is None else journal
+    validate_reboot_record(journal)
+    current = adb.shell("cat", "/proc/sys/kernel/random/boot_id")
+    if not re.fullmatch(BOOT_ID, current):
         raise SetupError("Cannot establish Android boot identity; reboot verification refused.")
-    adb.run("reboot")
+    previous = journal.get("reboot_from_boot_id", current)
+    if "reboot_from_boot_id" not in journal:
+        # Record intent before the request: an uncertain request is observed, not repeated.
+        journal["reboot_from_boot_id"] = previous
+        if path is not None:
+            write_json(path, journal)
+        adb.run("reboot")
     deadline = time.monotonic() + 120
     def probe_timeout():
         remaining = deadline - time.monotonic()
@@ -786,7 +802,7 @@ def reboot_check(adb):
         try:
             adb.select_usb(timeout=probe_timeout())
             current_boot = adb.shell("cat", "/proc/sys/kernel/random/boot_id", timeout=probe_timeout())
-            changed = bool(re.fullmatch(boot_pattern, current_boot)) and current_boot != previous
+            changed = bool(re.fullmatch(BOOT_ID, current_boot)) and current_boot != previous
             if changed and adb.shell("getprop", "sys.boot_completed", timeout=probe_timeout()) == "1":
                 break
         except SetupError:
@@ -794,6 +810,9 @@ def reboot_check(adb):
     else:
         raise SetupError("Android did not return over USB within 120 seconds. Reconnect in Device mode "
                          "and run restore. USB recovery requires responsive Android/ADB.")
+    journal["observed_reboot_boot_id"] = current_boot
+    if path is not None:
+        write_json(path, journal)
     after = inspect(adb)
     require_compatible(after)
     if not configured(after) or after["usb_mode"] != "1":
@@ -805,7 +824,7 @@ def reboot_check(adb):
 
 
 def configured(report):
-    return (report["compatible"] and report["carauto"]["enabled"] == 3 and
+    return (report.get("setup_compatible", report["compatible"]) and report["carauto"]["enabled"] == 3 and
             report["fullscreen_value"] == 0 and report["receiver"]["installed"] and
             report["launcher"]["build"] == PROFILE["launcher"]["update"].get("build", "openhu") and
             (not PROFILE.get("permission_setup") or bool((report.get("carlink_permissions") or {}).get("ready"))))
@@ -853,7 +872,7 @@ def setup(adb, state_dir, report, supplied_apk=None, verify_reboot=False):
             journal["launcher_upgrade_at"] = now()
             write_json(path, journal)
         def stage(name, action):
-            # Downloads/owner prompts can take time. Never rely on an old setup report.
+            # Downloads and physical steps can take time. Recheck before each stage.
             current = inspect(adb)
             require_compatible(current)
             if current["usb_mode"] != "1":
@@ -896,7 +915,7 @@ def setup(adb, state_dir, report, supplied_apk=None, verify_reboot=False):
             if not configured(after):
                 raise SetupError("Final configured state did not pass read-back.")
             if verify_reboot and not journal.get("android_reboot_verified"):
-                stage("verify_android_reboot", lambda: reboot_check(adb))
+                stage("verify_android_reboot", lambda: reboot_check(adb, path, journal))
                 journal["android_reboot_verified"] = True
             journal["phase"] = "configured"
             journal["configured_at"] = now()
@@ -904,7 +923,7 @@ def setup(adb, state_dir, report, supplied_apk=None, verify_reboot=False):
             write_json(path, journal)
         except NeedsPermissions as exc:
             journal["phase"] = "waiting_for_permissions"
-            journal["next_action"] = "accept_car_permission_then_rerun_setup"
+            journal["next_action"] = "inspect_permission_prompt"
             write_json(path, journal)
             return {"status": "waiting_for_permissions", "backup": str(path), "projection_tested": False,
                     "next_action": journal["next_action"], "message": str(exc)}
@@ -932,7 +951,7 @@ def setup_result(path, journal, report, already=False):
             "device_writes": not already, "projection_tested": False,
             "android_reboot_verified": rebooted, "launcher": report["launcher"],
             "next_action": "phone_handoff" if rebooted else "rerun_setup_with_reboot_check",
-            "next": (["Complete car/profile onboarding if shown; use right-hand drive.",
+            "next": (["With the laptop still connected, inspect any CarLink setup screen shown and complete available onboarding.",
                       "Disconnect the laptop, select Host模式, and connect the phone to the regular charging/CarAuto USB port.",
                       "Complete phone-side pairing/trust if requested; check projection, sound, touch, the large card, Home and native controls."]
                      if rebooted else ["Keep the laptop connected in Device mode. Run setup --reboot-check."]),
@@ -980,6 +999,7 @@ def run_commands(adb, state_dir, args):
         result = public_report(report)
         result["device_writes"] = False
         result["projection_tested"] = False
+        result["configured"] = configured(report)
         if adb.serial:
             path = backup_path(adb, state_dir)
             result["backup_exists"] = path.exists()
@@ -993,7 +1013,9 @@ def run_commands(adb, state_dir, args):
                     {"configured", "restored", "waiting_for_permissions"} else
                     {"configured": "phone_handoff" if journal.get("android_reboot_verified") else
                      "rerun_setup_with_reboot_check", "restored": "restore_complete",
-                     "waiting_for_permissions": "accept_car_permission_then_rerun_setup"}[journal["phase"]])
+                     "waiting_for_permissions": "inspect_permission_prompt"}[journal["phase"]])
+                if journal["phase"] == "configured" and not result["configured"]:
+                    result["next_action"] = "inspect_configuration_drift"
             if not report["compatible"]:
                 result["next_action"] = "diagnose_identity_mismatch_no_writes"
             elif args.command == "status" and report.get("component_issues"):
@@ -1035,6 +1057,10 @@ def main(argv=None):
         return code
     except KeyboardInterrupt:
         message, code = "Interrupted. Reconnect by USB and run status/restore if setup had started.", 130
+    except NeedsPermissions as exc:
+        message, code = str(exc), 3
+        details = {"status": "waiting_for_permissions", "projection_tested": False,
+                   "next_action": "inspect_permission_prompt"}
     except (SetupError, OSError, ValueError) as exc:
         message, code = str(exc), 2
         details = getattr(exc, "details", {})
