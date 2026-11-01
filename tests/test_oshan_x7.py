@@ -116,6 +116,8 @@ class FakeADB(tool.ADB):
         return subprocess.CompletedProcess(args, 0, text, "")
 
     def respond(self, words, root):
+        if words == ["pm", "list", "packages", "--user", "0", tool.RECEIVER]:
+            return "package:" + tool.RECEIVER if self.packages[tool.RECEIVER]["installed"] else ""
         if words == ["cat", "/proc/sys/kernel/random/boot_id"]:
             return self.boot_id
         if words[:2] == ["logcat", "-d"]:

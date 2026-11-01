@@ -2,7 +2,9 @@
 
 If you get this working on another Oshan X7, I'd like to hear what headunit and
 firmware you have. For now, I'm keeping this repo focused on the wired setup I
-got working on my car.
+got working on my car. The current reference configuration is CarLink with
+owner-confirmed fullscreen Android Auto and CarPlay; OpenHU instructions are
+retained as historical documentation and for existing recovery journals.
 
 If you find a problem, please include the tool version, command, mismatch/error message,
 firmware/MCU versions, and whether a device operation had started. Redact device
@@ -26,6 +28,11 @@ Do not change an artifact pin without inspecting the resulting code and
 qualifying that exact build on the car. Preserve legacy backup compatibility,
 unchanged factory-base checks and ownership on rollback; an update that was
 already present before setup must never be claimed or removed by a new cycle.
+
+Keep upstream licensing and corresponding-source references with the CarLink
+permission delta. Do not publish complete APKs or bundled authentication inputs.
+Review screenshots for phone/account/location details; keep raw capture records
+private and publish only selected frames with accurate captions/provenance.
 
 Run `python3 -m unittest discover -s tests -v` for code changes. Tests must exercise
 failure paths and the limits on device mutations as well as successful setup.

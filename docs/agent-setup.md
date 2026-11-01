@@ -1,7 +1,13 @@
 # Agent workflow: take care of the laptop setup
 
-This is the detailed runbook for [Option 1: automatic setup](../README.md#option-1--automatic-setup-with-a-local-ai-agent).
-For someone running the commands themselves, use [Option 2: manual setup](../README.md#option-2--manual-setup).
+For the current reference-car setup, start with [CarLink setup](carlink-setup.md)
+and retain the original CarLink state directory. Use `carlink-check` and the
+CarLink migration/recovery commands rather than historical OpenHU setup.
+
+The laptop preparation and physical/menu steps below apply to both workflows.
+OpenHU-specific install/recovery stages are the historical runbook for
+[Option 1: automatic setup](openhu-setup.md#option-1--automatic-setup-with-a-local-ai-agent).
+For manual OpenHU commands, use [Option 2](openhu-setup.md#option-2--manual-setup).
 
 I wrote this for the agent doing the setup. Please handle the laptop preparation
 yourself instead of asking the person to install developer tools, find executable

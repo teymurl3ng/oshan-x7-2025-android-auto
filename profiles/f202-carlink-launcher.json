@@ -1,0 +1,11 @@
+{
+  "sha256": "ffc81db01bb7d1645b6a9efd9d23960cafd6b671ba51b88d3816794597b30285",
+  "bytes": 8274207,
+  "certificate_sha256": "c8a2e9bccf597c2fb6dc66bee293fc13f2fc47ec77bc6b2b0d52c11f51192ab8",
+  "patch": "patches/f202-launcher-carlink.bsdiff",
+  "patch_sha256": "44399ba3e6aecf8c8d37fd3ddf494c7253b8e314ff6b222835303c5a85b2f7b7",
+  "patch_bytes": 4670690,
+  "base_sha256": "0c50bad53fa2116e98928c74be78e1b9609a1d3f73d3ee42726b001ae7ddefb0",
+  "source_patch": "patches/launcher-carlink-source.patch",
+  "source_patch_sha256": "6a66a2f7a9f202d946846b6ec23bc2aaf7f08e29a49d546f4f2d53c0918e3b29"
+}

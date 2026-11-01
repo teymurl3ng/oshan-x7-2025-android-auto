@@ -1,0 +1,39 @@
+{
+  "capture_date": "2026-11-02",
+  "timezone": "Asia/Karachi",
+  "source": "actual headunit screenshots",
+  "width": 1920,
+  "height": 720,
+  "published_images": [
+    {
+      "file": "launcher-carlink.png",
+      "sha256": "bf65755b952b730ed9c1c56e31403d290c80fe5854435615226be3b17f7361de",
+      "bytes": 224155,
+      "description": "Factory Home with the new large CarLink card, after the verified Android reboot."
+    },
+    {
+      "file": "launcher-carlink-app-menu.png",
+      "sha256": "0e48250e03ec29397b3be8b2b0f8e092314e1c59e1cbd4ac808409aa0428a876",
+      "bytes": 171002,
+      "description": "Native app-menu page; duplicate CarLink/OpenHU/launcher entries absent."
+    },
+    {
+      "file": "carplay-fullscreen.png",
+      "sha256": "84d59c43888eeeecfa4d1258392fc881aa70ac44e5e1e95bafd66ac4900960fe",
+      "bytes": 283769,
+      "description": "Actual fullscreen CarPlay Search frame; transport not inferred."
+    },
+    {
+      "file": "android-auto-fullscreen.png",
+      "sha256": "61e8cdc9013aafe9d754f52837f65e88eee88c605c78568434165b13be943da8",
+      "bytes": 230168,
+      "description": "Actual fullscreen Android Auto dashboard; early frame selected before map labels and media content loaded."
+    },
+    {
+      "file": "carlink-home-fullscreen.png",
+      "sha256": "9e355eeaa0cbcbcc8f6d9cf424c115f0bb7188d023fcbecfdf1198392c27182c",
+      "bytes": 1197931,
+      "description": "CarLink receiver Home at full width; connection option shown, not active projection."
+    }
+  ]
+}

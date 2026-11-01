@@ -1,7 +1,9 @@
 # Testing and qualification
 
 Software tests, artifact checks and actual car behavior are different evidence.
-The v0.3 workflow has offline tests; its full live setup/restore cycle is pending.
+The historical v0.3 OpenHU workflow has offline tests; its full live
+setup/restore cycle is pending. CarLink's recorded migration, fullscreen and
+launcher/reboot stages have live evidence below.
 
 ## Offline checks
 
@@ -25,6 +27,9 @@ uncertain mutation. Clocks are simulated for bounded health/reboot tests.
 | Ownership | Preexisting apps/settings kept, legacy AA journals/upgrade, absent fullscreen default behavior, setup/restore no-ops, corrupt journal/identity/lock refusals |
 | Reboot | New boot identity required, persisted state/UI checks, stalled boot failure/recovery, completed check does not reboot again |
 | Host preparation | Existing tools, private complete SDK extraction, traversal/link rejection, failed executable validation |
+| CarLink trial | Exact app identity, original journal preservation, duplicate app refusal, permission pause, isolation, keep-data OpenHU removal and verified APK reinstall |
+| CarLink layout | Separate per-app fullscreen baseline, exact/default restoration, persistence/read-back failure and interrupted recovery |
+| CarLink launcher | Separate owned launcher pin, prior launcher backup, unknown replacement refusal, uncertain install/return, original AA gates preserved and a new reboot check |
 
 CI runs Python 3.10/3.13 on Linux, Windows and macOS. Python 3.13 jobs also fetch
 Google's real host tools and run only `adb version`; that smoke check does not
@@ -32,6 +37,18 @@ start a server or access a car. A source-ZIP check verifies the ordinary downloa
 contains all code, docs and the patch without requiring Git metadata.
 
 ## Completed component tests on the car
+
+On 2026-11-02 the owner tested AA and CarPlay in CarLink, then confirmed both
+filled the screen after CarLink's separate factory fullscreen setting. The
+guarded launcher migration installed the exact new build, verified a normal
+Android reboot and persisted fullscreen/app/launcher state. The owner confirmed
+the large CarLink card opens the app and factory Home returns. The final
+promoted setup has not been restored back to OpenHU live; that remains an
+offline-tested recovery path. AA and CarPlay have actual fullscreen screenshots;
+AA's published frame was selected before map labels/media content loaded.
+[Current evidence](verified-findings.md#current-carlink-results--2026-11-02).
+
+### Earlier OpenHU tests
 
 The first launcher passed install/card/Home/native-control checks, factory
 rollback/reinstall, a normal Android reboot and wired AA/Home. The exact final

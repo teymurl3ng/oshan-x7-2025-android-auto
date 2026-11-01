@@ -3,7 +3,26 @@
 These notes distinguish what was read or seen on the car, what the owner
 reported, what was found in saved code, and what remains untested. Raw private
 dumps, identifiers and APKs are not published. The latest component work and
-screenshots were recorded on 2026-10-26.
+screenshots were recorded on **2026-11-02**. Earlier OpenHU observations below
+are retained as historical evidence.
+
+## Current CarLink results — 2026-11-02
+
+| Finding | Evidence | Limit |
+| --- | --- | --- |
+| CarLink 1.0.7 installed as the selected receiver | USB read-back of exact version/hash; matching Android/ARM requirements | Local manifest-only variant, with a new private signing identity |
+| AA and CarPlay both work fullscreen | Owner independently tested both, then confirmed both fill the display | Individual audio, microphone and reconnect outcomes were not enumerated |
+| Fullscreen CarPlay reference frame | Actual headunit screenshot of CarPlay Search at 1920 × 720, with factory overlays retained | Transport/wireless reliability cannot be inferred from the image |
+| Fullscreen Android Auto reference frame | Timed on-headunit capture while the phone used the shared USB port | Published early dashboard frame avoids map labels/personal details; it does not establish Maps/music behavior |
+| OpenHU absent from active apps, backup retained | Active package-list read-back, exact saved APK hash, retained app-data directory | APK backup is separate from data retained on the headunit |
+| CarLink factory layout value `0` | Preference read-back, Home window bounds `[0,0][1920,720]`, actual screen captures | Cold ignition cycle remains untested |
+| Large factory card opens CarLink; Home returns | Owner tap/return test after signed launcher migration | Other vehicle controls were not exhaustively rechecked |
+| New launcher and fullscreen persist after Android reboot | Changed boot identity, authorized USB return, exact launcher hash/UID/Home and app/layout read-back | Normal Android reboot is not an ignition cycle |
+| Guarded return to the old setup | Prior failed app trials reinstalled exact OpenHU and restored Home; offline launcher-migration recovery tests | The final promoted launcher-to-OpenHU restore has not been exercised live |
+
+[Current setup and exact launcher pin](carlink-setup.md) ·
+[App pins, original permission collision and trial chronology](carlink-trial.md) ·
+[Actual screenshots](screenshots.md).
 
 ## What the evidence supports
 
@@ -69,7 +88,8 @@ path pinned in the CLI.
 On the car, the receiver key read back as 0 and bounds/rendered surface expanded
 to 1920×720. The owner then confirmed full-width connected Android Auto. The
 [before/after pictures](screenshots.md#full-screen-open-headunit) document the
-receiver's main screen. Other apps have not been qualified for this setting.
+receiver's main screen. CarLink was subsequently given its own per-app value
+and tested fullscreen as recorded above.
 Normal Android reboot read-back persisted; a cold ignition cycle is untested.
 
 Reference receiver choices were USB, right-hand drive, landscape, about 10-inch
@@ -106,7 +126,7 @@ No separate Host-mode, debugging or complete onboarding-prompt screenshots exist
 
 ## Public workflow qualification
 
-The current v0.3 workflow adds stage health checks, a shared automatic/manual
+The historical v0.3 OpenHU workflow adds stage health checks, a shared automatic/manual
 recovery engine, permission pauses, component-specific recovery and an optional
 normal Android reboot check. Tests simulate launches, crashes/ANRs, PID loss,
 USB loss, missing root, malformed preferences, disabled/unknown receivers,

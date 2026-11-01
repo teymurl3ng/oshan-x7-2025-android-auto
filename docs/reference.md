@@ -4,6 +4,33 @@ I kept these details out of the [main setup instructions](../README.md) so they
 don't get in the way of getting started. Come here if you need to check your
 firmware, sort out a connection problem, or restore your original settings.
 
+## Current CarLink commands
+
+Use the **original CarLink state directory**, interpreter, ADB executable,
+server port and USB serial throughout. These commands are separate from the
+historical OpenHU commands below. [Full CarLink workflow](carlink-setup.md).
+
+| Command | Behavior |
+| --- | --- |
+| `carlink-check --json` | Read-only firmware/app/launcher status; promoted setups report `carlink_configured` |
+| `carlink-trial --remove-openhu --reboot-check --json` | From the exact earlier OpenHU baseline, copy/verify its APK, retain data during removal, install the pinned CarLink variant and verify an Android reboot |
+| `carlink-fullscreen --json` | Back up/set CarLink's per-app layout value to `0` and verify UI health |
+| `carlink-promote --reboot-check --json` | Reconstruct/install the pinned CarLink launcher over the prior exact OpenHU launcher and verify a normal Android reboot |
+| `carlink-restore --json` | Restore the previous launcher and owned layout/app state from the original journal |
+| `carlink-reference-start --json` | Take six timed private screenshots over 90 seconds so the phone can use the shared USB port |
+| `carlink-reference-collect --json` | Retrieve/validate the finished private image set and remove only its owned temporary files |
+| `carlink-reference-pages --json` | Capture the qualified factory Home/app-menu pages and return to Home, without changing app settings |
+
+Append `--state-dir /path/to/original-carlink-state` and actual connection
+options to every command. A completed restore retains its journal; a later
+fresh cycle uses a new state directory. Unknown APKs/firmware are not adopted.
+The default historical OpenHU `check`/`setup` intentionally refuses the promoted
+launcher; it does not mean the recorded CarLink configuration is unsupported.
+
+CarLink's `projection_tested: false` field describes what the machine checks
+can establish. Owner-reported AA/CarPlay and screenshot evidence are documented
+separately; no CLI foreground check proves phone projection or sound.
+
 ## Compatibility
 
 My car: **2025 Changan Oshan X7, right-hand drive**. Another X7 with the same year
@@ -19,7 +46,7 @@ compatibility check. Here's what the script looks for:
 | MCU | `F202RHD_20240722_1` |
 | Physical screen | 1920 × 720, no resolution override |
 | Factory launcher base | Original system-partition APK, matching the verified SHA-256 |
-| Active launcher | Exact factory APK or pinned OpenHU update; system/shared UID 1000, version 20240726, original default HOME |
+| Active launcher | Exact factory/OpenHU APK for historical setup; the pinned CarLink update is accepted only by its journal-owned migration. System/shared UID 1000, version 20240726, original default HOME are still required |
 | Access | Existing `su 0` root, Android user 0, boot completed |
 | Factory apps | Required packages present and supporting system apps enabled |
 | Existing receiver | Absent, or the exact enabled Open Headunit 3.5.0 release APK |
@@ -92,6 +119,10 @@ libraries. Existing SDK installations can be reused without modifying global PAT
 | Launcher patch missing or changed | Download a complete matching repo ZIP/checkout. Do not substitute another APK or bypass the output hash. |
 | Preference is saved but bars remain | Reopen Open Headunit and inspect actual projection. Stored preference verification is not a visual test. |
 | Download unavailable | Obtain the [exact official 3.5.0 APK](https://github.com/andreknieriem/open-headunit/releases/tag/v.3.5.0) and use `setup --apk ...`. |
+
+For port/cable isolation and a controlled comparison of OpenHU's two USB drivers,
+see [USB reliability](usb-reliability.md). The alternative driver is not yet
+car-tested here and is not silently selected by setup.
 
 I also changed automatic-start and wireless settings while troubleshooting, but
 I didn't keep a complete record of their final phone values. The script leaves

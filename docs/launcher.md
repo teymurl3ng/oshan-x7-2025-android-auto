@@ -1,5 +1,12 @@
 # Android Auto on the factory launcher
 
+The owner has selected CarLink after observing both AA and CarPlay fullscreen.
+The guarded `carlink-promote --reboot-check` migration updates this same large
+card to **CarLink / CarPlay + Android Auto**, using the original trial journal.
+It backs up this exact OpenHU launcher and the immutable factory APK, then
+reconstructs a separately pinned signed update. [CarLink migration](carlink-setup.md).
+The OpenHU flow below remains the historical installer and recovery reference.
+
 The Home screen update replaces the large **Connection / CarAuto** card with
 **Android Auto / Open Headunit**. Tapping it opens the pinned receiver directly.
 It hides the redundant small OpenHU tile and launcher/test-launcher app-menu

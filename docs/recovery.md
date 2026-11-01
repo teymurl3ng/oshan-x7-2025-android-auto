@@ -1,5 +1,19 @@
 # Restore and recover
 
+For the promoted CarLink setup, use **`carlink-restore` with its original state
+directory**. Its guarded migration restores the verified previous launcher
+backup before returning the app/layout state. Do not run the historical OpenHU
+setup to overwrite the new launcher. [CarLink primary setup and recovery](carlink-setup.md).
+
+An active experimental CarLink trial has its own app-only
+`carlink-restore` command and journal. Use that first to restore OpenHU's
+original enabled state and remove only its owned CarLink trial app. The
+trial's owner-authorized removal mode also reinstalls its exact saved OpenHU
+APK, retaining data through the uninstall `-k` option. Preserve that backup.
+The AA
+`restore` below does not own CarLink and refuses to cross an active trial.
+[CarLink trial and recovery](carlink-trial.md).
+
 There is **one restore command** for the changes made by this setup cycle. The
 same engine runs automatically when a setup stage fails. It uses the saved
 original state and ownership journal; it is not a factory reset.

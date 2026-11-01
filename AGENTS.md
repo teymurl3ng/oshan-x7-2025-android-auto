@@ -4,6 +4,16 @@ Read [README.md](README.md), [docs/agent-setup.md](docs/agent-setup.md),
 [docs/car-menu.md](docs/car-menu.md) and [docs/recovery.md](docs/recovery.md) before
 using the car. This is an evidence-based workflow for one tested firmware.
 
+## Current setup: CarLink
+
+The reference car now uses CarLink. Read `docs/carlink-setup.md` and retain its
+original state directory. Use `carlink-check` for its read-only status and
+`carlink-restore` for its owned recovery; do not run the historical OpenHU
+`setup`/`restore` over it. Both AA and CarPlay were owner-confirmed fullscreen;
+the large CarLink card and factory Home return were owner-confirmed working.
+The exact launcher and fullscreen value survived a normal Android reboot.
+The OpenHU workflow below is retained for old journals and the previous baseline.
+
 ## Work autonomously within the supported flow
 
 - Prepare the local connected laptop yourself: detect OS/CPU, execute Python to
@@ -21,7 +31,8 @@ using the car. This is an evidence-based workflow for one tested firmware.
   sequence, each PIN's evidence limits and USB-role instructions directly when
   guiding them. In owner-facing AI setup documentation, keep those steps inline;
   a link to car-menu.md supplements them rather than replacing them.
-- Run `check --json`, then `setup --reboot-check --json`. The CLI journals each
+- For the historical OpenHU workflow, run `check --json`, then
+  `setup --reboot-check --json`. The CLI journals each
   step, reads back its state and checks app/SystemUI health before continuing.
   Let machine checks and guarded automatic recovery run without asking the owner
   to approve each routine step. Exit 3 means a visible permission prompt: explain
@@ -35,6 +46,31 @@ using the car. This is an evidence-based workflow for one tested firmware.
   compatibility pass. A successful process/foreground check is not a phone test.
 
 ## Keep the boundaries
+
+- The experimental CarLink trial uses `carlink-check`,
+  `carlink-trial --reboot-check` and `carlink-restore` in `oshan_x7.py`;
+  read `docs/carlink-trial.md`. Its separate journal temporarily owns only
+  pausing the exact pinned OpenHU and installing/removing the exact CarLink app.
+  The owner-authorized `--remove-openhu` mode instead copies/verifies its exact
+  installed APK, uninstalls it for user 0 with `-k` to retain data, and reinstalls
+  that backup during trial restore. Preserve the APK backup and original journal;
+  only the recorded removal plus a valid backup permits its absence in the trial.
+  Keep OpenHU data and all existing journals. It does not modify the
+  launcher or CarAuto. The owner's requested `carlink-fullscreen` stage owns
+  only CarLink's per-app factory fullscreen value, backs it up before writes,
+  and restores its original value (or factory-default -1 when absent) during
+  trial restore. OpenHU's fullscreen key is unchanged.
+  Restore the trial before AA setup/restore.
+  The trial-only acceptance of its owned disabled OpenHU is not a full AA
+  setup compatibility pass. Qualify projection with both actual phones.
+  The owner has now authorized replacing the old setup. `carlink-promote
+  --reboot-check` uses the existing journal and guarded launcher migration:
+  back up the exact prior launcher and immutable factory APK, reconstruct and
+  verify the separately pinned CarLink launcher, install as a signed update,
+  check Home/CarLink and reboot. Its extra launcher identity is accepted only
+  inside that journal's owned migration. `carlink-restore` first reinstalls the
+  exact prior launcher backup, then reverses the owned app/layout changes.
+  Preserve the migration journal and all backups even after making CarLink primary.
 
 - Use the deterministic `oshan_x7.py` CLI. Do not improvise shell changes on the
   car. Stop setup on mismatches/errors. Never weaken a check or add a profile
