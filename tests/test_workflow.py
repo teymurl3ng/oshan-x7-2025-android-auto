@@ -53,7 +53,7 @@ class WorkflowTests(DeviceFixture):
         car = FakeADB()
         car.permission_prompt = True
         output = io.StringIO()
-        with patch.object(tool, "ADB", return_value=car), contextlib.redirect_stdout(output):
+        with patch.object(tool, "ADB", return_value=car), patch("carlink_setup.run", side_effect=lambda core, adb, state, args: core.run_commands(adb, state, args)), contextlib.redirect_stdout(output):
             code = tool.main(["setup", "--state-dir", str(self.state), "--json"])
         result = json.loads(output.getvalue())
         self.assertEqual(3, code)

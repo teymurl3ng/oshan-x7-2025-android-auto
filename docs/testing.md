@@ -1,94 +1,60 @@
 # Testing and qualification
 
-Software tests, artifact checks and actual car behavior are different evidence.
-The historical v0.3 OpenHU workflow has offline tests; its full live
-setup/restore cycle is pending. CarLink's recorded migration, fullscreen and
-launcher/reboot stages have live evidence below.
-
-## Offline checks
-
 ```sh
 python3 -m unittest discover -s tests -v
 ```
 
-The suite runs without a car, network or real ADB. Its stateful simulator fails
-on unrecognized commands, records writes and supports failures before/after an
-uncertain mutation. Clocks are simulated for bounded health/reboot tests.
+Tests run offline with simulated ADB, network and clocks. Unrecognized device
+commands fail the simulator. Software tests are separate from actual car results.
 
-| Area | Behaviors checked |
+| Area | Checked behavior |
 | --- | --- |
-| Compatibility | Every firmware property, display/override, user/boot, factory base, active APK/UID/version/system flag/default Home, root, receiver identity |
-| Transport | USB descriptor required, unauthorized/offline/network/emulator rejected, explicit target and ADB server port, host-mode refusal |
-| Artifacts | Download bounds/checksum/cache, BSDIFF40 decompression/instructions/offsets/corruption, both launcher pins and factory pull |
-| Stages | Original backup and incomplete journal before first write, failed activity despite exit 0, live foreground/process requirements, fresh crash/ANR, PID restart, history/unrelated events ignored |
-| Permissions | Distinct pause/exit 3 before later stages, same backup and owned receiver retained across resume |
-| Automatic recovery | Launcher crash rollback through the same full restore engine, failed-stage reporting, no rollback writes on identity change, deferred recovery after real simulated transport loss |
-| Partial restore | Disabled exact receiver, unknown receiver kept, lost root, malformed preferences, independent eligible reversals, receiver retained when Home fails, retry without repeated launcher removal |
-| Ownership | Preexisting apps/settings kept, legacy AA journals/upgrade, absent fullscreen default behavior, setup/restore no-ops, corrupt journal/identity/lock refusals |
-| Reboot | New boot identity required, persisted state/UI checks, stalled boot failure/recovery, completed check does not reboot again |
-| Host preparation | Existing tools, private complete SDK extraction, traversal/link rejection, failed executable validation |
-| CarLink trial | Exact app identity, original journal preservation, duplicate app refusal, permission pause, isolation, keep-data OpenHU removal and verified APK reinstall |
-| CarLink layout | Separate per-app fullscreen baseline, exact/default restoration, persistence/read-back failure and interrupted recovery |
-| CarLink launcher | Separate owned launcher pin, prior launcher backup, unknown replacement refusal, uncertain install/return, original AA gates preserved and a new reboot check |
+| Public setup | Factory → official CarLink directly, launcher/fullscreen/CarAuto setup, normal reboot and repeated no-op |
+| Automatic permissions | Grants before first app launch, special access and battery exemption, enabled/bound USB service, other services preserved |
+| Permission recovery | Original grants retained, owned grants reversed, later unrelated services kept, failed grants cannot claim success |
+| Recovery | Same automatic/manual engine, original snapshots, partial failures, uncertain writes, unknown replacements retained, repeat restore no-op |
+| Identity | Exact firmware/factory/active APKs, UID/version/default Home, root, user and USB mode |
+| Transport | Unauthorized/offline/network/emulator rejection, explicit USB serial and local server port |
+| Health | Actual foreground/process samples, fresh crash/ANR versus historical logs, permission pause and bounded observation |
+| Artifacts | Pinned official download/checksum/size, launcher delta reconstruction and changed/corrupt inputs |
+| Compatibility | Original journal ownership and recovery continue without requiring an older setup for new users |
 
-CI runs Python 3.10/3.13 on Linux, Windows and macOS. Python 3.13 jobs also fetch
-Google's real host tools and run only `adb version`; that smoke check does not
-start a server or access a car. A source-ZIP check verifies the ordinary download
-contains all code, docs and the patch without requiring Git metadata.
+CI runs Python 3.10/3.13 on Linux, Windows and macOS. Host-tool smoke checks only
+run `adb version`, without car access. Source exports must contain code, profiles,
+docs and required patches without needing Git metadata.
 
-## Completed component tests on the car
+## Live evidence
 
-On 2026-11-02 the owner tested AA and CarPlay in CarLink, then confirmed both
-filled the screen after CarLink's separate factory fullscreen setting. The
-guarded launcher migration installed the exact new build, verified a normal
-Android reboot and persisted fullscreen/app/launcher state. The owner confirmed
-the large CarLink card opens the app and factory Home returns. The final
-promoted setup has not been restored back to OpenHU live; that remains an
-offline-tested recovery path. AA and CarPlay have actual fullscreen screenshots;
-AA's published frame was selected before map labels/media content loaded.
-[Current evidence](verified-findings.md#current-carlink-results--2026-11-02).
+The owner confirmed AA and CarPlay fullscreen and the large CarLink card/Home
+return. The exact launcher/fullscreen configuration passed normal Android reboot
+checks. Official CarLink was installed and its saved settings restored, with
+app/launcher/layout verified after reboot. Automatic runtime/special grants,
+battery exemption and the exact USB service binding also passed a live Android
+reboot check. [Evidence](verified-findings.md).
 
-### Earlier OpenHU tests
+The owner reports iPhone cable and wireless CarPlay working perfectly, Android
+wireless unreliable, and the regular charging/CarAuto port as the working phone
+port. A car-side prompt still needed tapping after the grant/service setup; full
+USB prompt automation is unresolved. The new
+direct-from-factory public setup/restore sequence has not completed a full live
+cycle; its individual app/launcher/layout components have live evidence.
 
-The first launcher passed install/card/Home/native-control checks, factory
-rollback/reinstall, a normal Android reboot and wired AA/Home. The exact final
-menu-cleanup build passed install/hash/UID/HOME read-back, before/after-reboot icon
-checks, large-card/Home and owner native-control checks. The owner reports wired
-AA working on the recording USB port; the ordinary port remains unstable.
-Microphone recognition is unresolved. Final phone feedback did not separately
-list every sound/touch/popup check. [Full evidence](verified-findings.md).
+## Next controlled car cycle
 
-Patch reconstruction was also compared byte for byte with the exact final APK.
-That is an offline artifact check, not a new installation on the car.
+On only the exact supported firmware, preserve the original private state and
+keep the parked car powered with the laptop in Device mode.
 
-## Controlled v0.3 car cycle still needed
+1. Record original compatibility/settings and ownership; run setup with reboot
+   verification. Confirm grants, bound USB service and app/Home/SystemUI health.
+2. Repeat setup and verify no writes or changed original snapshot.
+3. Disconnect laptop, select Host and attach actual phones. Observe USB dialogs,
+   both projections, fullscreen, touch, sound, large card/Home and native controls.
+4. Record reconnects and microphone results separately.
+5. Regain Device mode and restore using the original journal. Check factory
+   launcher, owned settings/permissions/CarAuto and preexisting app preservation.
+6. Repeat restore without writes. Qualify recoverable interruptions only when
+   Device access remains available; do not deliberately risk firmware/boot access.
+7. Record cold ignition separately if later tested. Do not infer wireless or
+   ignition reliability from a normal Android reboot.
 
-Use only the exact supported firmware, while parked, with power and the private
-backup preserved. Keep the laptop in Device mode until its stages finish. Do not
-induce a firmware/boot failure merely to prove a recovery claim.
-
-1. Record read-only compatibility, original settings/apps and current ownership.
-   Qualify access back to Device mode before claiming any Host-mode rescue route.
-2. Run setup with `--reboot-check`. Confirm each stage's read-back and the actual
-   Android 9 health/permission observations. Record unexpected onboarding screens;
-   never silently bypass them or relabel an unrecognized screen as a crash.
-3. Complete visible permissions and resume the same command if paused. Check
-   the large card, Home, icon cleanup and usual native controls. Confirm reboot
-   state and health before laptop disconnection.
-4. Repeat completed setup: no device writes or changes to the original snapshot.
-5. Disconnect laptop, select Host, connect phone directly to the recording USB
-   port. Record real Maps, sound, touch, reconnect, card/Home and native-control
-   outcomes separately. Record unresolved microphone behavior honestly.
-6. Disconnect phone, select Device, reconnect laptop and run unified restore.
-   Confirm owned launcher returns to the exact factory base with data retained,
-   owned CarAuto/fullscreen restored, and only an owned new receiver removed.
-   Preexisting installs must remain. Repeat restore: no additional writes.
-7. On a suitable controlled unit, qualify recoverable app failures and cable-loss
-   resume without risking access to the factory menu. Confirm partial results
-   never claim full success and the journal survives. Stop if USB/Android becomes
-   inaccessible; this project has no qualified boot/firmware rescue.
-8. Record a cold ignition/power-off cycle separately if later tested. Do not infer
-   it from normal Android reboot success or conflate it with wireless qualification.
-
-Report CLI read-back versus what was seen/heard and the exact command/version.
-Do not publish APKs, serials, network settings or raw private backups.
+Do not publish raw dumps, APKs, phone data, device identifiers or private backups.

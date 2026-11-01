@@ -1,123 +1,82 @@
-# CarLink: primary CarPlay and Android Auto setup
+# CarLink setup
 
-The owner selected CarLink 1.0.7 after testing both Android Auto and CarPlay,
-then confirming both fill the 1920 × 720 display. The primary receiver is the
-already approved local permission-coexistence variant. OpenHU is absent from
-active packages; its verified APK backup and retained data remain for recovery.
-CarAuto stays disabled. [App artifact and trial evidence](carlink-trial.md).
-[Current reference screenshots](screenshots.md).
+The public path installs official CarLink directly on the exact supported
+factory firmware. No other receiver is an installation prerequisite.
+[Car menu and USB roles](car-menu.md) · [Laptop preparation](agent-setup.md).
 
-## Migrate the existing working setup
+## Run setup
 
-This is a migration of the recorded, working CarLink trial on the exact F202
-firmware. It is not a fresh-firmware compatibility bypass. Keep the same USB
-target, ADB server and original state directory; do not create another baseline.
-
-When starting from the exact previous qualified OpenHU setup, use a new state
-directory for the trial and retain it through the remaining stages:
+With the laptop authorized over USB in **Device模式**:
 
 ```sh
-python3 oshan_x7.py carlink-check --state-dir /path/to/new-carlink-state --json
-python3 oshan_x7.py carlink-trial --remove-openhu --reboot-check --state-dir /path/to/new-carlink-state --json
+python3 prepare.py --json
+python3 oshan_x7.py check --json
+python3 oshan_x7.py setup --reboot-check --json
 ```
 
-Complete visible CarLink onboarding and test the phone. Regain Device mode and
-reconnect the laptop before the next stage:
+Use the same interpreter, ADB executable/server port, USB target and state
+directory for subsequent commands. Windows uses `py -3`. Unknown firmware,
+launcher builds or app replacements stop setup; there is no force flag.
 
-```sh
-python3 oshan_x7.py carlink-fullscreen --state-dir /path/to/new-carlink-state --json
-```
+Setup verifies the official APK and launcher patch before writes, saves the
+original settings and factory launcher, installs CarLink if absent, applies
+its permissions automatically, checks UI health, disables CarAuto, sets
+CarLink's factory fullscreen value to `0`, installs the pinned launcher update,
+and verifies the configured state through a normal Android reboot. Every
+mutation is recorded before execution and checked afterwards.
 
-Confirm both projection modes at the new width before promotion. For an already
-working trial, use its existing state directory directly:
+CarLink's runtime and special permissions, battery exemption and its own
+USB auto-confirm accessibility service are included automatically. Other
+accessibility services remain enabled. One car-side prompt still needed tapping
+in the owner's later phone test; full USB prompt automation is unresolved.
+[Grant scope and recovery](permissions.md).
 
-```sh
-python3 oshan_x7.py carlink-check --state-dir /path/to/original-carlink-state --json
-python3 oshan_x7.py carlink-promote --reboot-check --state-dir /path/to/original-carlink-state --json
-```
+The factory Home card reads **CarLink / CarPlay + Android Auto** and targets
+`com.carlink.app/com.carlink.app.ui.HomeActivity`. Factory Home/Back overlays,
+media and vehicle controls remain. Duplicate receiver/launcher menu entries
+are filtered. The tool does not root or flash the car, edit firmware partitions,
+enable network ADB or install Google services.
 
-Retain the actual `--adb`, `--adb-port` and `--serial` options from that trial.
-Keep the laptop connected in **Device模式** throughout. Already authorized USB
-debugging needs no repeated onboarding; use the documented [car menu](car-menu.md)
-if returning from the phone's Host mode.
+Complete car/profile onboarding if shown. Once the reboot check passes,
+disconnect the laptop, select **Host模式** and connect a phone with a data cable.
+Check actual AA/CarPlay, fullscreen, touch, sound, the large card, Home and native
+controls. Machine foreground checks do not establish these phone behaviors.
 
-Promotion requires the exact enabled CarLink APK, its fullscreen value `0`,
-the journal-owned OpenHU removal, and the exact previously qualified OpenHU
-launcher. It copies and verifies the prior active launcher and immutable factory
-APK, reconstructs the pinned new launcher, journals the write, and installs it
-through ordinary Android package management with the matching signing identity.
-The factory system APK and launcher data remain. No firmware partitions, default
-Home assignment, other app layouts or vehicle control behavior are changed.
-
-The large card now reads **CarLink / CarPlay + Android Auto**, with a screen/phone
-icon and **Tap to open CarLink**. Its explicit target is
-`com.carlink.app/com.carlink.app.ui.HomeActivity`. Existing navigation shortcuts
-target the same app. The small duplicate CarLink tile, retired OpenHU/CarAuto
-rows and launcher/test-launcher entries are filtered while other menu entries
-retain their behavior. This does not repair microphone routing.
-
-The new build is accepted only by the CarLink journal's owned migration.
-Historical OpenHU `setup`/`restore` does not accept or overwrite it. Use the
-CarLink commands with the original state directory from now on.
-
-## Pinned launcher
+## Artifact pins
 
 | Artifact | Bytes | SHA-256 |
 | --- | ---: | --- |
-| CarLink launcher APK | 8,274,207 | `ffc81db01bb7d1645b6a9efd9d23960cafd6b671ba51b88d3816794597b30285` |
+| Official CarLink 1.0.7 | 16,747,592 | `16e8b98436a5c5f355aa4b49086e28d41bee9f9f874174658cafb682fd503e77` |
+| Factory launcher base | 8,256,512 | `0c50bad53fa2116e98928c74be78e1b9609a1d3f73d3ee42726b001ae7ddefb0` |
+| CarLink launcher update | 8,274,207 | `ffc81db01bb7d1645b6a9efd9d23960cafd6b671ba51b88d3816794597b30285` |
 | Factory-to-CarLink BSDIFF | 4,670,690 | `44399ba3e6aecf8c8d37fd3ddf494c7253b8e314ff6b222835303c5a85b2f7b7` |
 
-The [pin file](../profiles/f202-carlink-launcher.json) separately identifies the
-factory base and matching factory signing certificate. Only the binary/source
-patches are distributed, never full APKs or private signing inputs.
-[Readable source changes](../patches/launcher-carlink-source.patch).
+The app comes unchanged from the [official v1.0.7 release](https://github.com/F-e-n-y-x/CarLink/releases/tag/v1.0.7).
+Its signing certificate SHA-256 is
+`037468ca5beb70ea5f68543329b03368247dfb393d3f626a6b472d10e5657d21`.
+The installer accepts only the exact pinned APK; official later updates still
+require qualification and new pins before this installer will adopt them.
 
-Offline comparison covered 8,280 compiled classes and 60,238 methods. Changes
-were limited to the explicit CarLink launch/navigation references, retired/menu
-filtering, card strings and icon. The manifest and all other resource/assets
-payloads were unchanged. Factory media and vehicle control methods were
-unchanged. Signature schemes v1/v2/v3 and ZIP alignment verified. Reconstructing
-the binary patch produced the exact signed output bytes.
-
-The live migration installed that exact build and verified its active hash,
-factory system/shared UID, default Home and UI health. A normal Android reboot
-returned over USB with the new launcher, CarLink enabled, OpenHU absent and
-CarLink's fullscreen value still `0`. A post-reboot screenshot showed the new
-large card and the existing Music, Radio, Bluetooth phone and recorder cards.
-The owner then confirmed that tapping the large card opens CarLink and the
-factory Home button returns correctly. Both connected projection modes had
-already been confirmed fullscreen. Other native controls and individual audio,
-microphone or reconnect checks were not enumerated in this migration test.
+The launcher is reconstructed locally from the verified factory APK. Only
+binary/source deltas are distributed; full APKs and signing inputs stay private.
+[Setup profile](../profiles/f202-carlink.json) ·
+[Launcher pins](../profiles/f202-carlink-launcher.json) ·
+[Source changes](../patches/launcher-carlink-source.patch).
 
 ## Recovery
 
-Keep the original journal and backups. Reconnect the laptop in **Device模式**:
-
 ```sh
-python3 oshan_x7.py carlink-restore --state-dir /path/to/original-carlink-state --json
+python3 oshan_x7.py status --json
+python3 oshan_x7.py restore --json
 ```
 
-This reinstalls the exact previous OpenHU launcher from its verified local
-backup, returns CarLink's owned layout preference, reinstalls the saved OpenHU
-APK, checks Home/OpenHU, and only then removes the owned CarLink app. It never
-uninstalls the launcher for user 0. Unknown firmware or an unknown replacement
-launcher blocks writes; an interrupted operation uses read-back and the same
-journal. A lost USB connection requires this recovery command, not raw installs.
+Reuse the original state directory and connection options. Recovery rolls back
+its owned launcher update, layout, permissions and CarAuto state, then removes
+CarLink only if this cycle installed it. Preexisting apps are retained.
+Older journals are dispatched to their matching recovery engine automatically;
+a new public setup never installs an older receiver to reach CarLink.
+[Recovery details](recovery.md).
 
-Recovery still requires responsive Android, package management and authorized
-USB. Switching back from Host with a broken launcher is unqualified. Normal
-Android reboot checks are separate from cold ignition cycles. Owner-observed
-AA/CarPlay projection does not establish all audio, microphone, reconnect or
-vehicle control behavior.
-
-## Reference screenshots across the shared USB port
-
-Direct captures work while the laptop is connected in Device mode. For a phone
-session that needs Host mode, `carlink-reference-start` starts a bounded script
-that saves six frames 15 seconds apart under a unique owned `/data/local/tmp`
-directory. It does not change app, USB-role, root or network settings. Disconnect
-the laptop, select Host, show a phone screen without personal details, and after
-the capture window regain Device and reconnect. Use `carlink-reference-collect`
-with the same state directory; it verifies the original capture identity,
-pulls complete 1920 × 720 PNGs, then removes only its exact finished temporary
-files. Review local private images before copying any to public documentation.
+The direct-from-factory sequence is offline-tested. Component installation,
+fullscreen, launcher/card/Home and normal Android reboot have live evidence;
+a complete fresh setup/restore cycle remains pending. [Evidence](verified-findings.md).

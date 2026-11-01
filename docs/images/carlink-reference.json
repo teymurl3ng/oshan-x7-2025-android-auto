@@ -15,7 +15,7 @@
       "file": "launcher-carlink-app-menu.png",
       "sha256": "0e48250e03ec29397b3be8b2b0f8e092314e1c59e1cbd4ac808409aa0428a876",
       "bytes": 171002,
-      "description": "Native app-menu page; duplicate CarLink/OpenHU/launcher entries absent."
+      "description": "Native app-menu page; duplicate receiver/launcher entries absent."
     },
     {
       "file": "carplay-fullscreen.png",
@@ -35,5 +35,6 @@
       "bytes": 1197931,
       "description": "CarLink receiver Home at full width; connection option shown, not active projection."
     }
-  ]
+  ],
+  "capture_context": "Captured before the official signing-identity switch; UI/code asset payloads match. These frames do not establish USB prompt automation."
 }

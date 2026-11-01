@@ -1,13 +1,9 @@
 # Agent workflow: take care of the laptop setup
 
-For the current reference-car setup, start with [CarLink setup](carlink-setup.md)
-and retain the original CarLink state directory. Use `carlink-check` and the
-CarLink migration/recovery commands rather than historical OpenHU setup.
-
-The laptop preparation and physical/menu steps below apply to both workflows.
-OpenHU-specific install/recovery stages are the historical runbook for
-[Option 1: automatic setup](openhu-setup.md#option-1--automatic-setup-with-a-local-ai-agent).
-For manual OpenHU commands, use [Option 2](openhu-setup.md#option-2--manual-setup).
+Public setup installs official CarLink directly. Use `check`,
+`setup --reboot-check`, `status` and `restore` with the original state directory.
+CarLink's supported Android 9 permissions are granted automatically inside setup;
+the owner does not need to navigate its permission screens.
 
 I wrote this for the agent doing the setup. Please handle the laptop preparation
 yourself instead of asking the person to install developer tools, find executable
@@ -169,14 +165,15 @@ as needed. Retain them for every later call. Setup must follow a successful
 | Compatibility | Exact firmware/MCU/display, factory and active launcher hash/UID/version/HOME, required apps, user 0, boot/root/receiver checks | Stop unknown configurations; diagnose rather than changing the profile |
 | Artifacts and backup | Official receiver pin; factory pull and patch/output pins; durable original state | Preserve the state directory; do not expose private data |
 | Baseline Home | Successful launch, resumed launcher, stable launcher/SystemUI processes, no fresh relevant crash/ANR | Stop and inspect a preexisting failure |
-| Receiver | Install if absent, hash/version read-back, healthy receiver foreground | Guide visible onboarding/permissions; don't silently grant them |
+| Receiver | Install official CarLink if absent; exact hash/version read-back | Continue into automatic permissions before first launch |
+| Permissions | Runtime/app-op/battery read-back and exact USB service bound to Android | Continue automatically; preserve other services and the original permission journal |
 | CarAuto | Exact disabled-user state read-back and SystemUI health | Continue automatically when verified |
 | Fullscreen | Saved value 0 and SystemUI health | Continue automatically; stored value is not proof of rendered width |
 | Launcher update | Exact reconstructed APK installed, hash/UID/version/HOME read-back, healthy foreground | Keep the factory base and journal; don't run a separate launcher installer |
 | Final state | All configured values plus healthy receiver | Complete visible onboarding while laptop stays connected |
 | Android reboot | One new boot identity, boot complete, configured state, Home/receiver health | Require `android_reboot_verified=true` before phone handoff |
 | Owner checks | Large card, Home, icons and usual native controls | Record what the owner actually tried |
-| Phone handoff | Disconnect laptop → Host模式 → phone on recording port | Owner tests real projection, sound, touch and reconnect |
+| Phone handoff | Disconnect laptop → Host模式 → phone on regular charging/CarAuto port | Owner tests real projection, sound, touch and reconnect |
 
 Every journal operation is saved as incomplete before its action. Completion is
 saved only after that action's verification. The original snapshot is retained.
@@ -186,18 +183,19 @@ entries, without clearing logs. Three stable samples span roughly two seconds;
 startup observation is bounded to 12 seconds, with individual read timeouts.
 This detects some immediate failures; it does not prove long-term reliability.
 
-### Permission pause
+### Automatic permissions
 
-Exit **3**, `status=waiting_for_permissions`, is a deliberate pause. Tell the
-owner which **car** prompt is visible, have them accept it, then rerun the same
-`setup --reboot-check --json` command. The journal still owns any receiver
-installed before the pause. Do not replace the backup or switch to Host.
+Setup grants the exact official CarLink app's Android 9 runtime and special
+access, battery exemption and its built-in USB auto-confirm service before
+launch. It saves original states and verifies grants and service binding.
+Preserve the permission journal beside the setup backup. Other accessibility
+services remain. [Grant scope and recovery](permissions.md).
 
-The CLI recognizes standard Android runtime permission activities. An app's own
-onboarding usually remains inside OpenHU and can pass the UI health check;
-complete it visibly anyway. An unrecognized blocking system/app screen may be
-reported as a health failure. Inspect it, rather than cycling launches or calling
-it an app crash without logs. Use [the prompt table](car-menu.md#prompts-and-which-screen-to-use).
+Do not ask the owner to tap through CarLink permission pages. An unexpected
+standard runtime dialog is still reported distinctly as exit 3; inspect the
+actual screen and diagnose why the automatic stage did not cover it. Car/profile
+onboarding and phone-side authorization are separate from car-side permissions.
+Never guess an unknown screen or label it a crash without evidence.
 
 ### Failure or interruption
 
@@ -211,18 +209,16 @@ means an interruption outside the staged failure handler; also inspect status.
 
 ## 7. Handoff and report
 
-After `next_action=phone_handoff`, have the owner verify the large Android Auto
+After `next_action=phone_handoff`, have the owner verify the large CarLink
 card, Home return, absent duplicate icons and their usual native controls. Then
 ask for the physical laptop-disconnect/Host/phone sequence. Phone USB debugging
 is not needed. The phone connects directly to the car, not through the laptop.
 
-The video-recording port worked on the reference car. The ordinary port still
-failed after about 10–15 seconds. Do not claim CarAuto disable alone explains all
-USB failures. Guide phone Android Auto prompts and car USB-access prompts. Maps,
-sound, touch, Home and reconnect need observation with the phone connected.
-Microphone/Gemini remains unresolved; wireless is outside this qualified flow.
-OpenHU's optional Show toast messages switch is a manual setting, not part of
-installer ownership or restore.
+Use the regular charging/CarAuto USB port for the current CarLink configuration,
+as confirmed by the owner. iPhone worked with both cable and wireless CarPlay;
+Android wireless was unreliable. Use cable for Android Auto. Microphone/Gemini remains unresolved.
+A car-side USB prompt still required tapping despite the enabled service;
+record that limit and do not claim full USB prompt automation.
 
 Report the interpreter/ADB paths, compatibility result, changed stages, backup
 location, Android reboot evidence and the owner's phone/native-control results.

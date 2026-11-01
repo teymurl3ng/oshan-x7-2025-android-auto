@@ -1,181 +1,66 @@
-# Commands and reference
-
-I kept these details out of the [main setup instructions](../README.md) so they
-don't get in the way of getting started. Come here if you need to check your
-firmware, sort out a connection problem, or restore your original settings.
-
-## Current CarLink commands
-
-Use the **original CarLink state directory**, interpreter, ADB executable,
-server port and USB serial throughout. These commands are separate from the
-historical OpenHU commands below. [Full CarLink workflow](carlink-setup.md).
+# Commands and compatibility
 
 | Command | Behavior |
 | --- | --- |
-| `carlink-check --json` | Read-only firmware/app/launcher status; promoted setups report `carlink_configured` |
-| `carlink-trial --remove-openhu --reboot-check --json` | From the exact earlier OpenHU baseline, copy/verify its APK, retain data during removal, install the pinned CarLink variant and verify an Android reboot |
-| `carlink-fullscreen --json` | Back up/set CarLink's per-app layout value to `0` and verify UI health |
-| `carlink-promote --reboot-check --json` | Reconstruct/install the pinned CarLink launcher over the prior exact OpenHU launcher and verify a normal Android reboot |
-| `carlink-restore --json` | Restore the previous launcher and owned layout/app state from the original journal |
-| `carlink-reference-start --json` | Take six timed private screenshots over 90 seconds so the phone can use the shared USB port |
-| `carlink-reference-collect --json` | Retrieve/validate the finished private image set and remove only its owned temporary files |
-| `carlink-reference-pages --json` | Capture the qualified factory Home/app-menu pages and return to Home, without changing app settings |
+| `python3 prepare.py --json` | Find or prepare local ADB tools |
+| `python3 oshan_x7.py check --json` | Read-only setup compatibility |
+| `python3 oshan_x7.py setup --reboot-check --json` | Install official CarLink, automatically configure permissions, fullscreen and launcher, then verify a normal Android reboot |
+| `python3 oshan_x7.py status --json` | Read-only state and journal/recovery status |
+| `python3 oshan_x7.py restore --json` | Reverse this cycle's owned changes from its original journal |
 
-Append `--state-dir /path/to/original-carlink-state` and actual connection
-options to every command. A completed restore retains its journal; a later
-fresh cycle uses a new state directory. Unknown APKs/firmware are not adopted.
-The default historical OpenHU `check`/`setup` intentionally refuses the promoted
-launcher; it does not mean the recorded CarLink configuration is unsupported.
+Windows uses `py -3`. Keep one interpreter, ADB executable, server port, USB
+target and state directory throughout setup and recovery.
 
-CarLink's `projection_tested: false` field describes what the machine checks
-can establish. Owner-reported AA/CarPlay and screenshot evidence are documented
-separately; no CLI foreground check proves phone projection or sound.
+| Option | Purpose |
+| --- | --- |
+| `--adb /path/to/adb` | Select the verified ADB executable |
+| `--adb-port 5038` | Reuse a local server port other than 5037 |
+| `--serial YOUR_CAR_USB_SERIAL` | Select a car when multiple USB devices exist |
+| `--state-dir /path/to/backup` | Reuse this private backup for the entire cycle |
+| `setup --apk /path/to/CarLink-1.0.7.apk` | Use a local copy; the same official size/hash is required |
+| `setup --reboot-check` | Verify an Android reboot before phone handoff; completed checks are not repeated |
+| `--json` | One stdout JSON object; 0=success, 2=refusal/error, 3=unexpected visible permission pending, 130=interruption |
 
-## Compatibility
-
-My car: **2025 Changan Oshan X7, right-hand drive**. Another X7 with the same year
-could have different headunit software, so I don't use the badge/year as the
-compatibility check. Here's what the script looks for:
+## Exact compatibility
 
 | Check | Supported value |
 | --- | --- |
-| Headunit | `F202_MCA` |
-| Manufacturer / platform | `alps` / MediaTek `mt6771` |
+| Headunit | `F202_MCA`, `alps`, MediaTek `mt6771` |
 | Android | 9 / API 28 |
 | Firmware | `F202RHD_D1_20241022162756` |
 | MCU | `F202RHD_20240722_1` |
-| Physical screen | 1920 × 720, no resolution override |
-| Factory launcher base | Original system-partition APK, matching the verified SHA-256 |
-| Active launcher | Exact factory/OpenHU APK for historical setup; the pinned CarLink update is accepted only by its journal-owned migration. System/shared UID 1000, version 20240726, original default HOME are still required |
-| Access | Existing `su 0` root, Android user 0, boot completed |
-| Factory apps | Required packages present and supporting system apps enabled |
-| Existing receiver | Absent, or the exact enabled Open Headunit 3.5.0 release APK |
+| Screen | 1920 × 720, no override |
+| Factory launcher | Exact immutable APK hash |
+| Active launcher | Exact factory or pinned CarLink update; system/shared UID 1000, version 20240726, original default Home |
+| Access | Existing `su 0`, authorized USB in Device mode, user 0, completed boot |
+| Apps | Required factory packages present; CarLink absent or exact pinned official release |
 
-The remaining exact properties and checksums are in the
-[firmware profile](../profiles/f202-mca-rhd-20241022.json). Unknown firmware or
-incomplete checks stop setup. I haven't added a force flag. These checks reduce
-the risk of applying my setup to a different unit, but they aren't a manufacturer
-certification. I don't have a verified full SystemUI APK hash to pin. Don't add
-a profile just by copying another car's model/year.
+[Full profile](../profiles/f202-carlink.json). Unknown app versions, launcher
+replacements, competing enabled receivers or a conflicting permission owner
+stop setup. The tool does not overwrite them or weaken compatibility checks.
 
-The tool uses root already present on the tested firmware. It does not root or
-flash the car, edit firmware partitions, install Google services, or apply a
-general debloat list. It installs the pinned launcher as an Android system-app
-update under `/data/app/`; the original system-partition APK stays intact.
-Only CarAuto is disabled; vehicle/camera/climate/SystemUI services are not disabled.
+## Results
 
-## Host tools and command options
+`check` requires setup compatibility. `status` also exposes recovery-eligible
+states; `recovery_eligible=true` alone is not permission to run setup.
+`projection_tested=false` means machine checks cannot prove real projection,
+audio, touch or native controls. Owner observations are recorded separately.
 
-```sh
-python3 prepare.py --json
-python3 oshan_x7.py check --json
-python3 oshan_x7.py setup --reboot-check --json
-python3 oshan_x7.py status --json
-python3 oshan_x7.py restore --json
-```
-
-On Windows, substitute `py -3` for `python3`. `prepare.py --verify-only` checks
-existing host tools without downloading. Normal preparation downloads ADB if
-needed; Python installation is handled by the agent using the
-[host setup workflow](agent-setup.md), or by the person in manual mode.
-
-`check` and `status` are read-only on the car. `setup` installs the pinned receiver
-if absent, disables `com.eryanet.vlink`, saves the receiver's fullscreen preference,
-installs the tested launcher update, and verifies Home/receiver health between
-stages. With `--reboot-check`, it verifies a normal Android reboot before the
-phone handoff. `restore` uses the same recovery engine as a failed setup,
-reversing changes owned by that cycle.
-
-| Option | When to use it |
-| --- | --- |
-| `--adb /path/to/adb` | Use a specific verified ADB executable. Paths with spaces should be quoted. |
-| `--adb-port 5038` | Your existing local ADB server uses 5038 rather than 5037. |
-| `--serial YOUR_CAR_USB_SERIAL` | More than one USB device is attached. |
-| `--state-dir .oshan-x7-next` | Keep a new setup cycle separate after a completed restore. Use the same value for its later restore. |
-| `setup --apk /path/to/file.apk` | Use a previously downloaded official 3.5.0 APK. The fixed size/hash checks still apply. |
-| `setup --reboot-check` | Verify a normal Android reboot, saved state and Home/receiver health before phone handoff. Repeating a completed check does not reboot again. |
-| `--json` | One stdout JSON object; exit 0 = success, 2 = refusal/error, 3 = visible permission pending, 130 = interruption outside the staged handler. |
-
-The CLI finds working ADB installations automatically. Preparation keeps newly
-downloaded Platform Tools inside `.oshan-x7/tools/`, including supporting DLLs and
-libraries. Existing SDK installations can be reused without modifying global PATH.
+A failure may include `failed_stage`, nested `recovery`, `component_issues`,
+`recovery_errors` and `next_action`. Preserve the original journal, resolve the
+reported issue and use `restore` after an interrupted setup. `restored` means
+owned changes were reversed; `recovery_required` means work remains.
 
 ## Connection help
 
-| Symptom | Next step |
-| --- | --- |
-| Python/ADB missing | Agent: follow [agent-setup.md](agent-setup.md) and install it. Manual: install Python, then run `prepare.py`. |
-| No authorized USB device | Select **Device** mode, use a data cable, accept debugging authorization, and inspect `adb devices -l`. |
-| Car listed on 5038 only | Add `--adb-port 5038` to check/setup/status/restore. The tool does not kill other servers. |
-| Windows detects hardware but ADB sees nothing | Agent should inspect Device Manager and obtain an appropriate signed OEM driver if needed. No generic driver pack is verified here. |
-| Linux USB permission error | Agent should inspect udev/group permissions and use the distribution's documented Android-device setup. |
-| Compatibility mismatch | Stop; compare the reported fields with the profile. Do not force it. |
-| Another Open Headunit version is installed | This release refuses to overwrite/downgrade it. Retain its data and resolve the version difference deliberately. |
-| Phone charges but AA stays absent | Disconnect laptop, switch to **Host** mode, use a data cable, open Open Headunit and choose USB. |
-| Repeating USB prompts/disconnections | Check that CarAuto is disabled, Host mode is selected, and Open Headunit has USB permission. |
-| AA drops after 10–15 seconds on the ordinary port | The owner's video-recording USB port worked with the same cable. Try that port; the underlying cause is unresolved. |
-| Gemini opens/listens but recognizes no words | This remains unresolved on the owner's car, including its native voice assistant. The launcher update does not repair microphone routing. |
-| Unknown launcher path/hash, UID or default HOME | Stop. Keep the journal and inspect the reported build. The CLI accepts only the factory base and the exact qualified update. |
-| Launcher patch missing or changed | Download a complete matching repo ZIP/checkout. Do not substitute another APK or bypass the output hash. |
-| Preference is saved but bars remain | Reopen Open Headunit and inspect actual projection. Stored preference verification is not a visual test. |
-| Download unavailable | Obtain the [exact official 3.5.0 APK](https://github.com/andreknieriem/open-headunit/releases/tag/v.3.5.0) and use `setup --apk ...`. |
+Use Device mode for the laptop and Host mode for the phone. The reference
+regular charging/CarAuto USB port is the current working phone port. Diagnose data
+cable, USB authorization and host driver/group permissions before car changes.
+Do not kill another ADB server or enable network ADB to work around missing USB.
+[USB checks](usb-reliability.md) · [Car menu](car-menu.md).
 
-For port/cable isolation and a controlled comparison of OpenHU's two USB drivers,
-see [USB reliability](usb-reliability.md). The alternative driver is not yet
-car-tested here and is not silently selected by setup.
-
-I also changed automatic-start and wireless settings while troubleshooting, but
-I didn't keep a complete record of their final phone values. The script leaves
-those alone. Several things changed along the way, so I can't say which individual
-change fixed each problem. I haven't retested wireless since disabling CarAuto.
-
-The workflow never enables network ADB. If it was enabled in earlier independent
-debugging, arrange USB access and return to USB-only debugging separately using
-Android's official guidance. Running this tool does not clear that earlier state.
-
-## Machine-readable results
-
-`check` applies the strict setup checks. `status` uses recovery inspection and
-can succeed while `setup_compatible=false`; **do not use that as permission to
-run setup**. `recovery_eligible` means only the critical identity gates matched.
-Each remaining component still needs its own checks before a write.
-`compatible` on a recovery/status report refers to those recovery identity
-gates, while `setup_compatible` refers to the full setup configuration.
-
-| Field/status | Meaning and next step |
-| --- | --- |
-| `mismatches` | Failed mandatory gates; stop setup, inspect exact values |
-| `component_issues` | Receiver/root/preferences/boot or required-app issues; recovery evaluates each independently |
-| `backup_phase`, `failed_stage` | Saved progress and setup failure location, when a journal exists |
-| `waiting_for_permissions` | Exit 3; owner accepts visible car prompt, then rerun same setup command |
-| `configured` / `already_configured` | Configured values read back; projection remains untested |
-| `android_reboot_verified` | This cycle completed the CLI's normal Android reboot check; historical evidence, not an ignition-cycle claim |
-| `rerun_setup_with_reboot_check` | Keep laptop in Device mode and add the reboot check |
-| `phone_handoff` | Finish visible onboarding/native UI checks, disconnect laptop, select Host and connect phone |
-| `recovery` | Nested result after setup failure; inspect its status, errors and next action even though setup exits with an error |
-| `recovery_required` / `recovery_errors` | Some recovery is blocked or interrupted; preserve state, resolve reported issue, rerun restore |
-| `restored` / `already_restored` | This cycle's owned mutations recovered; preexisting installs/settings are kept |
-| `projection_tested=false` | CLI cannot certify real phone projection, audio, touch or native controls |
-
-A configured no-op reads the current state but does not relaunch apps or repeat
-historical health checks. Re-run checks and obtain actual observations when
-investigating a new failure. No command installs a background watcher on the car.
-
-## Backups and recovery
-
-The private state directory contains original CarAuto/receiver/fullscreen/launcher
-state, a SystemUI preference copy, the original factory and reconstructed launcher
-APKs when needed, and a durable operation journal. An incomplete entry is saved
-before each device action. Stage completion includes verification evidence;
-failed actions retain their error and failed stage. The original snapshot is not
-replaced during a resume or rollback.
-
-Use **one** `restore` command with this same directory and ADB options. It reverses
-only owned changes, rolls back the launcher before removing a newly installed
-receiver, and preserves preexisting apps. Full procedure, missing-root/broken-app
-recovery, legacy ownership, interrupted restores and stale locks are in
-[recovery.md](recovery.md). Unknown firmware or launcher identity still blocks
-writes. A broken receiver does not itself prevent a known owned launcher rollback.
-
-The complete v0.3 staged setup/recovery/reboot workflow is tested offline, not yet
-through a full live cycle. [Evidence](verified-findings.md) · [Test checklist](testing.md).
+The capture helpers `carlink-reference-start`, `carlink-reference-collect` and
+`carlink-reference-pages` are maintainer tools, separate from installation.
+Timed capture saves six private 1920 × 720 frames over 90 seconds while the
+shared port is used by the phone. Collection checks the recorded identity and
+removes only its finished owned temporary files. Review captures before publishing.

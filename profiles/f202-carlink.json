@@ -1,0 +1,70 @@
+{
+  "id": "f202-mca-rhd-20241022-carlink",
+  "vehicle": "Changan Oshan X7 (2025, owner-reported, right-hand drive)",
+  "properties": {
+    "ro.product.manufacturer": "alps",
+    "ro.product.model": "F202_MCA",
+    "ro.product.name": "full_spm8666p1_64",
+    "ro.product.device": "spm8666p1_64",
+    "ro.build.version.release": "9",
+    "ro.build.version.sdk": "28",
+    "ro.product.cpu.abilist": "arm64-v8a,armeabi-v7a,armeabi",
+    "ro.board.platform": "mt6771",
+    "ro.build.fingerprint": "alps/full_spm8666p1_64/spm8666p1_64:9/PQ2A.190405.003/zhangdan10221638:user/test-keys",
+    "ro.build.type": "user",
+    "ro.build.version.security_patch": "2020-11-05",
+    "ro.build.display.id": "F202RHD_D1_20241022162756",
+    "persist.sys.mcu_version": "F202RHD_20240722_1"
+  },
+  "physical_size": "1920x720",
+  "launcher": {
+    "package": "com.chinatsp.launcher",
+    "path": "/system/app/F202_Launcher/F202_Launcher.apk",
+    "sha256": "0c50bad53fa2116e98928c74be78e1b9609a1d3f73d3ee42726b001ae7ddefb0",
+    "bytes": 8256512,
+    "version_code": 20240726,
+    "uid": 1000,
+    "home": "com.chinatsp.launcher/.MainAct",
+    "update": {
+      "sha256": "ffc81db01bb7d1645b6a9efd9d23960cafd6b671ba51b88d3816794597b30285",
+      "bytes": 8274207,
+      "certificate_sha256": "c8a2e9bccf597c2fb6dc66bee293fc13f2fc47ec77bc6b2b0d52c11f51192ab8",
+      "patch": "patches/f202-launcher-carlink.bsdiff",
+      "patch_sha256": "44399ba3e6aecf8c8d37fd3ddf494c7253b8e314ff6b222835303c5a85b2f7b7",
+      "patch_bytes": 4670690,
+      "base_sha256": "0c50bad53fa2116e98928c74be78e1b9609a1d3f73d3ee42726b001ae7ddefb0",
+      "source_patch": "patches/launcher-carlink-source.patch",
+      "source_patch_sha256": "6a66a2f7a9f202d946846b6ec23bc2aaf7f08e29a49d546f4f2d53c0918e3b29",
+      "build": "carlink",
+      "filename": "carlink-launcher.apk"
+    }
+  },
+  "required_packages": [
+    "com.android.systemui",
+    "com.chinatsp.tfactoryapp",
+    "com.eryanet.vlink"
+  ],
+  "receiver": {
+    "package": "com.carlink.app",
+    "version_name": "1.0.7",
+    "version_code": 10007,
+    "variant": "official-1.0.7",
+    "bytes": 16747592,
+    "sha256": "16e8b98436a5c5f355aa4b49086e28d41bee9f9f874174658cafb682fd503e77",
+    "certificate_sha256": "037468ca5beb70ea5f68543329b03368247dfb393d3f626a6b472d10e5657d21",
+    "url": "https://github.com/F-e-n-y-x/CarLink/releases/download/v1.0.7/CarLink-1.0.7.apk",
+    "activity": "com.carlink.app/com.carlink.app.ui.HomeActivity",
+    "label": "CarLink",
+    "filename": "CarLink-1.0.7.apk",
+    "ordinary_app": true,
+    "exclusive_permission": "com.andrerinas.openheadunit.permission.NAVIGATION_UPDATE"
+  },
+  "evidence": "docs/verified-findings.md",
+  "competing_receivers": [
+    "com.andrerinas.headunitrevived",
+    "com.shihab.diplay",
+    "com.shihab.diplay.hudtest",
+    "com.shilapi.xcertplay"
+  ],
+  "permission_setup": true
+}

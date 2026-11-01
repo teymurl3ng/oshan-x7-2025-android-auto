@@ -135,6 +135,7 @@ class RemovalTests(DeviceFixture):
         profile["receiver"].update(bytes=len(RemovalADB.apk_payload),
                                    sha256=hashlib.sha256(RemovalADB.apk_payload).hexdigest())
         for p in (patch.object(core, "PROFILE", profile),
+                  patch.object(trial, "DEFAULT_PIN", trial.PIN),
                   patch.object(trial, "obtain_apk", return_value=Path("pinned-carlink.apk"))):
             p.start()
             self.addCleanup(p.stop)
@@ -174,6 +175,18 @@ class RemovalTests(DeviceFixture):
         self.assertEqual("restored", self.restore(car)["status"])
         self.assertEqual(1, car.writes.count("remove_openhu"))
         self.assertEqual(1, car.writes.count("reinstall_openhu"))
+
+    def test_official_signature_recovery_frees_permission_before_previous_app_reinstall(self):
+        car = RemovalADB()
+        self.start(car)
+        instance = trial.Trial(core, car, self.state)
+        journal = instance.load()
+        journal["apk_sha256"] = trial.BASE_PIN["sha256"]
+        journal["variant"] = trial.BASE_PIN["variant"]
+        core.write_json(instance.path, journal)
+        car.hashes[car.paths[trial.PIN["package"]]] = trial.BASE_PIN["sha256"]
+        self.assertEqual("restored", self.restore(car)["status"])
+        self.assertLess(car.writes.index("carlink_remove"), car.writes.index("reinstall_openhu"))
 
     def test_uncertain_reinstall_is_read_back_without_second_install(self):
         car = RemovalADB()
@@ -343,6 +356,9 @@ class PromotionTests(RemovalTests):
 class CarLinkTests(DeviceFixture):
     def setUp(self):
         super().setUp()
+        p = patch.object(trial, "DEFAULT_PIN", trial.PIN)
+        p.start()
+        self.addCleanup(p.stop)
         patcher = patch.object(trial, "obtain_apk", return_value=Path("pinned-carlink.apk"))
         patcher.start()
         self.addCleanup(patcher.stop)
@@ -509,11 +525,8 @@ class CarLinkTests(DeviceFixture):
     def test_visible_permission_pause_resumes_without_reinstalling(self):
         car = TrialADB()
         car.carlink_permission = True
-        output = io.StringIO()
-        with patch.object(core, "ADB", return_value=car), contextlib.redirect_stdout(output):
-            code = core.main(["carlink-trial", "--state-dir", str(self.state), "--json"])
-        result = json.loads(output.getvalue())
-        self.assertEqual(3, code)
+        result = trial.run(core, car, self.state, "carlink-trial")
+        self.assertEqual("waiting_for_permissions", result["status"])
         self.assertIn("CarLink", result["message"])
         original = copy.deepcopy(self.journal(car)["original"])
         car.carlink_permission = False

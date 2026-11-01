@@ -1,8 +1,7 @@
-"""Experimental, app-only CarLink trial on the existing qualified AA setup.
+"""Compatibility and recovery for existing CarLink journals.
 
-The caller supplies oshan_x7's module to retain its exception/ADB identities
-when the CLI runs as __main__. No launcher or CarAuto writes occur. An optional
-fullscreen stage owns only CarLink's per-app factory layout preference.
+New public installations use carlink_setup and the shared setup engine. Keep
+these original journal identities and recovery ownership for earlier cycles.
 """
 from pathlib import Path
 import json
@@ -14,6 +13,7 @@ import urllib.request
 
 BASE_PIN = {
     "package": "com.carlink.app", "version_name": "1.0.7", "version_code": 10007,
+    "variant": "official-1.0.7",
     "bytes": 16747592,
     "sha256": "16e8b98436a5c5f355aa4b49086e28d41bee9f9f874174658cafb682fd503e77",
     "certificate_sha256": "037468ca5beb70ea5f68543329b03368247dfb393d3f626a6b472d10e5657d21",
@@ -26,10 +26,9 @@ PIN = {
     "bytes": 16565044,
     "sha256": "a06e8ffcdcee0a1c555e39af9ea5f478addbb902b532f5b63a0c2c68d5f6a19e",
     "certificate_sha256": "dbacadae126d332ea436912ff63fd396d46833dae763ea6562dc694c7fe6d28c",
-    "patch": "patches/carlink-1.0.7-coexist.bsdiff",
-    "patch_bytes": 252089,
-    "patch_sha256": "4e1f5d954bb24fd48a6766ebb1fdd38a2e3cd4754465a0367841b7305ecbc514",
 }
+DEFAULT_PIN = BASE_PIN
+# PIN records the already installed historical variant for journal recovery only.
 LAUNCHER_PIN = json.loads((Path(__file__).resolve().parent / "profiles/f202-carlink-launcher.json").read_text())
 COMPETITORS = ("com.shihab.diplay", "com.shihab.diplay.hudtest", "com.shilapi.xcertplay")
 PHASES = {"backed_up", "waiting_for_permissions", "trial_ready", "restoring",
@@ -54,49 +53,25 @@ def refuse_active(core, adb, state_dir):
                                   "with this state directory before AA setup/restore.")
 
 
-def verify_apk(core, path):
+def verify_apk(core, path, pin=None):
+    pin = BASE_PIN if pin is None else pin
     path = Path(path).resolve()
-    if (not path.is_file() or path.stat().st_size != PIN["bytes"] or
-            core.digest(path) != PIN["sha256"]):
-        raise core.SetupError("CarLink APK differs from the exact pinned Oshan coexistence variant. "
-                              "The stock release cannot coexist with OpenHU's declared permission.")
+    if (not path.is_file() or path.stat().st_size != pin["bytes"] or
+            core.digest(path) != pin["sha256"]):
+        raise core.SetupError("CarLink APK differs from the exact pinned " + pin["variant"] + " release.")
     return path
 
 
 def obtain_apk(core, state_dir, supplied=None):
+    """New installations always use the unmodified official release."""
     if supplied:
         return verify_apk(core, supplied)
-    folder = state_dir / "cache"
+    folder = Path(state_dir) / "cache"
     folder.mkdir(parents=True, exist_ok=True, mode=0o700)
-    target = folder / "CarLink-1.0.7-oshan-coexist.apk"
-    if target.exists():
-        return verify_apk(core, target)
-    patch = core.ROOT / PIN["patch"]
-    if (not patch.is_file() or patch.stat().st_size != PIN["patch_bytes"] or
-            core.digest(patch) != PIN["patch_sha256"]):
-        raise core.SetupError("CarLink coexistence patch is absent or changed; no artifact is accepted.")
-    original = folder / "CarLink-1.0.7-official.apk"
-    if original.exists():
-        if original.stat().st_size != BASE_PIN["bytes"] or core.digest(original) != BASE_PIN["sha256"]:
-            raise core.SetupError("Cached official CarLink APK differs from its pinned base.")
-    else:
-        _download_base(core, folder, original)
-    try:
-        payload = core.apply_launcher_patch(original.read_bytes(), patch.read_bytes(), PIN["bytes"])
-    except core.PatchError as exc:
-        raise core.SetupError("Could not reconstruct the exact CarLink variant: " + str(exc)) from exc
-    fd, temporary = tempfile.mkstemp(prefix=".carlink-", dir=folder)
-    try:
-        with os.fdopen(fd, "wb") as stream:
-            stream.write(payload)
-            stream.flush()
-            os.fsync(stream.fileno())
-        verify_apk(core, temporary)
-        os.replace(temporary, target)
-    finally:
-        if os.path.exists(temporary):
-            os.unlink(temporary)
-    return target
+    target = folder / "CarLink-1.0.7-official.apk"
+    if not target.exists():
+        _download_base(core, folder, target)
+    return verify_apk(core, target)
 
 
 def _download_base(core, folder, target):
@@ -127,6 +102,7 @@ class Trial:
     def __init__(self, core, adb, state_dir):
         self.c, self.adb, self.state_dir = core, adb, Path(state_dir)
         self.path = journal_path(core, adb, self.state_dir)
+        self.pin = DEFAULT_PIN
 
     def load(self):
         c = self.c
@@ -134,6 +110,8 @@ class Trial:
             j = json.loads(self.path.read_text(encoding="utf-8"))
         except (OSError, ValueError) as exc:
             raise c.SetupError("Cannot read the original CarLink trial journal; preserve it.") from exc
+        if isinstance(j, dict):
+            self.pin = BASE_PIN if j.get("apk_sha256") == BASE_PIN["sha256"] else PIN
         original = j.get("original", {}) if isinstance(j, dict) else {}
         receiver = original.get("receiver", {}) if isinstance(original, dict) else {}
         launcher = original.get("launcher", {}) if isinstance(original, dict) else {}
@@ -142,7 +120,8 @@ class Trial:
                 j.get("kind") != "carlink_trial" or j.get("serial") != self.adb.serial or
                 j.get("profile") != c.PROFILE["id"] or
                 not (j.get("apk_sha256") == PIN["sha256"] or
-                     (j.get("restored") is True and j.get("apk_sha256") == BASE_PIN["sha256"])) or
+                     (j.get("apk_sha256") == BASE_PIN["sha256"] and
+                      (j.get("restored") is True or j.get("remove_openhu") is True))) or
                 type(j.get("restored")) is not bool or j.get("phase") not in PHASES or
                 type(j.get("android_reboot_verified")) is not bool or
                 type(j.get("remove_openhu", False)) is not bool or
@@ -236,6 +215,13 @@ class Trial:
                                "; read-back=" + repr(state) + ". Preserve the journal and APK backup.")
         return {"removed_for_user_0": True, "keep_data_requested": True, "pm_output": output[:800]}
 
+    def remove_carlink(self):
+        self.require_owned(self.package())
+        output = self.adb.shell("pm", "uninstall", "--user", "0", PIN["package"])
+        if "Success" not in output or self.package()["installed"]:
+            raise self.c.SetupError("CarLink removal did not verify; keep the journal.")
+        return {"removed": True}
+
     def reinstall_receiver(self):
         c = self.c
         apk = c.verify_apk(self.receiver_backup())
@@ -245,8 +231,9 @@ class Trial:
             raise c.SetupError("Reinstallation of the original OpenHU APK did not verify.")
         return state
 
-    def package(self):
+    def package(self, pin=None):
         c, adb = self.c, self.adb
+        pin = self.pin if pin is None else pin
         raw = adb.shell("dumpsys", "package", PIN["package"])
         present = bool(re.search(r"^\s*Package \[com\.carlink\.app\]", raw, re.M))
         state = c.parse_package(raw)
@@ -258,9 +245,9 @@ class Trial:
         uid = re.search(r"^\s*userId=(\d+)\s*$", raw, re.M)
         flags = re.search(r"^\s*(?:pkgFlags|flags)=\[([^\]]*)\]", raw, re.M)
         state["verified"] = bool(
-            state.get("version_code") == PIN["version_code"] and
-            state.get("version_name") == PIN["version_name"] and
-            state["sha256"] == PIN["sha256"] and uid and int(uid[1]) >= 10000 and flags and
+            state.get("version_code") == pin["version_code"] and
+            state.get("version_name") == pin["version_name"] and
+            state["sha256"] == pin["sha256"] and uid and int(uid[1]) >= 10000 and flags and
             not {"SYSTEM", "UPDATED_SYSTEM_APP"}.intersection(flags[1].split()) and
             not re.search(r"^\s*sharedUser=", raw, re.M) and
             re.fullmatch(r"/data/app/com\.carlink\.app-[A-Za-z0-9_+=@~-]+/base\.apk", state["path"]))
@@ -569,6 +556,16 @@ class Trial:
             if self.touched(journal, "install_carlink_launcher"):
                 self.step(journal, "restore_carlink_launcher", lambda: self.restore_carlink_launcher(journal))
                 r, state = self.inspect(journal, recovery=True)
+            # Root-dependent grants must not prevent an independently owned Home
+            # update rollback. Their original app is retained until grants recover.
+            import carlink_permissions
+            if carlink_permissions.path(c, self.adb, self.state_dir).exists():
+                from carlink_setup import configuration
+                prior_update = c.PROFILE["launcher"]["update"]
+                with configuration(c):
+                    if r["launcher"]["sha256"] == prior_update["sha256"]:
+                        c.PROFILE["launcher"]["update"] = prior_update
+                    carlink_permissions.restore(c, self.adb, self.state_dir)
             if state["installed"]:
                 if not self.touched(journal, "install_carlink"):
                     raise c.SetupError("CarLink was not installed by this journal; refusing removal.")
@@ -580,6 +577,11 @@ class Trial:
             if self.touched(journal, "carlink_fullscreen"):
                 self.step(journal, "restore_carlink_fullscreen", lambda: self.restore_layout(journal))
             receiver = r["receiver"]
+            if self.pin == BASE_PIN and state["installed"]:
+                self.launch(c.PROFILE["launcher"]["home"])
+                c.verify_apk(self.receiver_backup())
+                self.step(journal, "remove_carlink", self.remove_carlink)
+                state = self.package()
             if not receiver.get("installed") and self.owns_absence(journal):
                 self.step(journal, "reinstall_openhu", self.reinstall_receiver)
                 receiver = c.receiver_state(self.adb)
@@ -603,12 +605,7 @@ class Trial:
                 raise c.SetupError("Original OpenHU changed during recovery; retaining CarLink.")
             if state["installed"]:
                 self.require_owned(state)
-                def remove():
-                    output = self.adb.shell("pm", "uninstall", "--user", "0", PIN["package"])
-                    if "Success" not in output or self.package()["installed"]:
-                        raise c.SetupError("CarLink removal did not verify; keep the journal.")
-                    return {"removed": True}
-                self.step(journal, "remove_carlink", remove)
+                self.step(journal, "remove_carlink", self.remove_carlink)
             after = c.inspect(self.adb)
             c.require_compatible(after)
             self.unchanged(after, journal)
@@ -635,6 +632,8 @@ class Trial:
         if journal and remove_openhu and not journal.get("remove_openhu"):
             raise c.SetupError("Cannot change the removal mode of an existing trial; restore it first.")
         r, state = self.inspect(journal)
+        if not journal and self.pin == BASE_PIN and not remove_openhu:
+            raise c.SetupError("The official CarLink trial requires --remove-openhu; removal happens before installation.")
         if state["present"] and not journal:
             raise c.SetupError("CarLink already exists outside this trial. It will not be adopted or overwritten.")
         if state["present"]:
@@ -647,8 +646,8 @@ class Trial:
         if not journal:
             journal = {"schema": 1, "kind": "carlink_trial", "profile": c.PROFILE["id"],
                        "serial": self.adb.serial, "created_at": c.now(), "phase": "backed_up",
-                       "apk_sha256": PIN["sha256"], "restored": False, "operations": [],
-                       "variant": PIN["variant"],
+                       "apk_sha256": self.pin["sha256"], "restored": False, "operations": [],
+                       "variant": self.pin["variant"],
                        "remove_openhu": remove_openhu,
                        "android_reboot_verified": False,
                        "original": {**{key: r[key] for key in
@@ -669,6 +668,8 @@ class Trial:
                     return self.launch(c.PROFILE["launcher"]["home"])
                 self.step(journal, "baseline_health", baseline_health)
                 install_baseline = c.health.logs(self.adb)
+                if self.pin == BASE_PIN and r["receiver"].get("installed"):
+                    self.step(journal, "remove_openhu", self.remove_receiver)
                 def install():
                     output = self.adb.run("install", "--user", "0", str(apk), timeout=120).stdout
                     if "Success" not in output:
@@ -712,7 +713,7 @@ class Trial:
 
     def result(self, journal, status):
         return {"status": status, "experimental": True, "journal": str(self.path),
-                "variant": PIN["variant"],
+                "variant": self.pin["variant"],
                 "openhu_removal_mode": bool(journal.get("remove_openhu")),
                 "openhu_apk_backup": str(self.receiver_backup()) if journal.get("remove_openhu") else None,
                 "primary_receiver": journal.get("primary_receiver"),

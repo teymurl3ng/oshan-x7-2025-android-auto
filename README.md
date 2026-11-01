@@ -1,136 +1,133 @@
 # Oshan X7 · CarPlay + Android Auto
 
-**CarLink running fullscreen, launched from the large factory Home card** on
-the reference 2025 right-hand-drive Oshan X7. The owner confirmed both Android
-Auto and CarPlay fill the **1920 × 720** display, the large card opens CarLink,
-and the factory Home button returns correctly. The launcher and fullscreen
-setting also passed a normal Android reboot check.
+**Official CarLink, fullscreen, launched from the large factory Home card.**
+Tested on the reference right-hand-drive Oshan X7 with a **1920 × 720** display.
+The large CarLink card and factory Home return work.
 
 ![Factory Home with the large CarLink card](docs/images/launcher-carlink.png)
 
-**CarPlay across the full display**
+![Fullscreen CarPlay](docs/images/carplay-fullscreen.png)
 
-![CarPlay fullscreen on the reference car, with factory Home and Back overlays retained](docs/images/carplay-fullscreen.png)
+![Fullscreen Android Auto](docs/images/android-auto-fullscreen.png)
 
-**Android Auto across the full display**
+The installer supports only the verified **F202_MCA, Android 9/API 28** unit,
+firmware **F202RHD_D1_20241022162756**, MCU **F202RHD_20240722_1**, with its existing
+`su 0` access. It checks exact firmware, launcher hashes/UID/Home, apps and USB.
+A matching badge/year is insufficient. [Compatibility details](docs/reference.md).
 
-![Android Auto dashboard fullscreen, captured before map labels loaded](docs/images/android-auto-fullscreen.png)
+## Automatic installation
 
-Actual headunit captures. [Reference screenshots and what each proves](docs/screenshots.md)
-· [Live evidence and remaining tests](docs/verified-findings.md).
+Use a local AI coding agent on the laptop you will connect to the car.
+[Download this repository](https://github.com/teymurl3ng/oshan-x7-2025-android-auto/archive/refs/heads/main.zip),
+extract it, open the folder in the agent, and give it this instruction:
 
-## Supported car and scope
+> Set up this repository on my Oshan X7. Read AGENTS.md and the linked runbooks.
+> Prepare Python and ADB on this laptop, run the read-only compatibility check,
+> then run the guarded setup with its Android reboot check. Handle the automatic
+> CarLink permissions, fullscreen and launcher update. Preserve the original
+> backup and journal. Ask me only for physical car/USB actions, unavoidable OS
+> authorization and actual phone/control tests. Stop on compatibility mismatches.
 
-- Exact **F202_MCA**, Android **9/API 28**, firmware
-  **F202RHD_D1_20241022162756**, with the existing tested `su 0` access.
-  The same badge or year is insufficient; the CLI checks exact firmware,
-  immutable launcher, active APK, UID, default Home and USB identity.
-- **CarLink 1.0.7**, using a locally signed variant that changes one conflicting
-  manifest permission name. Its code and assets match the official release.
-  [App artifact hashes and signing/update limitations](docs/carlink-trial.md).
-- The current path migrates the previous qualified OpenHU setup through a
-  recorded CarLink trial. **A one-command fresh CarLink install from stock has
-  not been qualified.** The old installer remains a
-  [separate historical guide](docs/openhu-setup.md).
+The agent handles laptop tools and runs the installer. You operate the car:
 
-CarAuto remains disabled; OpenHU is removed from active apps. Its exact APK,
-the prior launcher and their original journals remain private for recovery.
-The immutable factory launcher, Home/Back overlays and vehicle services remain.
-No firmware flashing, Google services or network ADB is used.
+1. Park the car and keep it powered. Open **Phone → `*#*#888` → Call → `1111` →
+   `开发模式`**. The outer PIN **1111** worked on the reference car. If the
+   development page asks separately, its code-only default is **3821**; that
+   separate PIN has no recorded live-entry test and may have been changed.
+   Stop if rejected.
+2. Enable **Settings → System → Advanced → Developer options → USB debugging /
+   `USB 调试`** if needed. If Developer options is hidden, tap **Build number**
+   seven times in About device/tablet.
+3. Return to `开发模式`, select **Device模式**, connect the laptop with a data
+   cable and accept its debugging authorization. Keep Device mode selected
+   through installation and the normal Android reboot check.
 
-## Use the current setup
+[Car menu labels and pictures](docs/car-menu.md) · [Agent runbook](docs/agent-setup.md).
 
-Open the large **CarLink / CarPlay + Android Auto** card and connect one phone.
-For the wired phone test, disconnect the laptop and select **Host模式** in the
-factory development page. The **video-recording USB port** worked on the
-reference car; the ordinary port was unstable. Its exact physical connector
-map is not recorded. Use a data cable and accept the visible car/phone prompts.
+Setup installs the unchanged **official CarLink 1.0.7 APK**, grants its Android 9
+runtime/special access automatically, disables the competing factory CarAuto
+receiver, applies fullscreen and installs the pinned large-card launcher update.
+It preserves the factory system APK and Home/Back overlays. It does not root or
+flash the car, enable network ADB or install Google services.
 
-For laptop work, disconnect the phone, return to **Device模式**, and reconnect
-the laptop. Retain the same ADB executable, server port, USB target and original
-CarLink state directory. Do not start a new baseline over an active cycle.
+Keep the private **`.oshan-x7`** folder, or the custom state directory used by
+the agent. It contains the original settings and recovery journal. The direct
+fresh-install workflow is tested offline; a complete fresh setup/restore cycle
+still needs live qualification. [Setup details](docs/carlink-setup.md).
 
-```sh
-python3 prepare.py --json
-python3 oshan_x7.py carlink-check --state-dir /path/to/original-carlink-state --json
-```
+## How to use
 
-Windows: use `py -3` instead of `python3`. Add the original `--adb`, `--adb-port`
-and `--serial` options when needed. `carlink-check` is read-only; the promoted
-setup reports **`carlink_configured`**.
+After the laptop-side checks finish:
 
-## Reproduce the migration
+1. Disconnect the laptop, select **Host模式** in `开发模式`, and open the large
+   **CarLink / CarPlay + Android Auto** card.
+2. For a cable connection, use a data cable in the **regular charging/CarAuto
+   USB port**. This is the working port in the current CarLink tests.
+3. Complete CarLink's car/profile onboarding if shown, using right-hand drive.
+   Accept the phone's own pairing/trust prompts. A car-side USB access prompt
+   can still need a tap; the enabled auto-confirm service has not handled every
+   observed prompt.
+4. Use the factory **Home** button to return to the car launcher. Check sound,
+   touch, radio/music, AC, phone and settings controls with your own phone.
 
-Use the [guarded CarLink setup guide](docs/carlink-setup.md). From the exact
-previous OpenHU baseline, the implemented stages are:
-
-1. `carlink-trial --remove-openhu --reboot-check`: verify/copy OpenHU's installed
-   APK, retain its data during removal, install the pinned CarLink variant and
-   check app/Home health through a normal Android reboot.
-2. Complete visible CarLink onboarding and permissions; test AA and CarPlay.
-3. `carlink-fullscreen`: back up and set **CarLink's own** factory layout value,
-   preserving OpenHU's value. Verify the connected picture at the new width.
-4. `carlink-promote --reboot-check`: back up the old launcher and factory base,
-   reconstruct/install the pinned CarLink launcher, then verify identity,
-   fullscreen, Home and CarLink through another normal Android reboot.
-
-All stages use the **same state directory**. Writes are journaled before
-execution and read back; lost USB or an interrupted operation requires recovery
-with that original journal. Do not repeat raw package or launcher mutations.
-
-**For a local AI agent:** read [AGENTS.md](AGENTS.md),
-[the laptop runbook](docs/agent-setup.md), [CarLink setup](docs/carlink-setup.md),
-[car screens](docs/car-menu.md) and [recovery](docs/recovery.md). Prepare tools
-and run the guarded CLI yourself; ask the owner only for physical/menu actions,
-visible permissions and actual phone/control observations.
-
-The owner-operated car sequence is **car Phone dial pad → `*#*#888` → Call →
-`1111` → `开发模式`**. If that development page asks for its separate PIN, the
-saved-code default is **`3821`**; the outer 1111 worked on the car, while 3821
-has no recorded live-entry test and can be overridden by a changed password.
-Stop if rejected. Use **Settings → System → Advanced → Developer options →
-USB debugging / `USB 调试`** if needed. If Developer options is hidden, tap
-**Build number** seven times in About device/tablet. Return to `开发模式`,
-select **Device模式**, connect the trusted laptop, and accept its debugging
-prompt. Keep Device mode throughout laptop commands and reboot checks.
-
-## Recovery and remaining limits
-
-Reconnect the laptop in Device mode and use the original CarLink journal:
-
-```sh
-python3 oshan_x7.py carlink-restore --state-dir /path/to/original-carlink-state --json
-```
-
-It restores the exact previous launcher backup, the owned CarLink layout value
-and the saved OpenHU installation before removing only its owned CarLink app.
-Do not use the historical OpenHU `restore` over the promoted launcher.
-[Recovery scope and interruption handling](docs/carlink-setup.md#recovery).
-
-Both projection modes, fullscreen, the large card and Home return are observed
-results. Microphone/Siri/call audio, repeated reconnects, exhaustive native
-controls and cold ignition cycles still need separate tests. The captured
-CarPlay frame does not establish its transport or wireless reliability.
-Recovery requires responsive Android/package management and authorized USB;
-returning from Host with an unusable launcher remains unqualified.
-
-## Project references
-
-| Guide | Contents |
+| Connection | Reference-car result |
 | --- | --- |
-| [CarLink setup](docs/carlink-setup.md) | Current migration, launcher pins and recovery |
-| [Trial and app details](docs/carlink-trial.md) | Permission conflict, exact variant and app ownership |
-| [Screenshots](docs/screenshots.md) | Current reference frames and historical comparisons |
-| [Car menu](docs/car-menu.md) | Codes, Chinese labels, USB roles and evidence |
-| [Commands](docs/reference.md) | CLI options and current versus historical commands |
-| [Verified findings](docs/verified-findings.md) | Observations, read-backs and limits |
-| [Testing](docs/testing.md) | Offline tests and pending live checks |
-| [Previous OpenHU setup](docs/openhu-setup.md) | Preserved old installer and recovery instructions |
+| iPhone CarPlay with cable | Owner reports working perfectly |
+| iPhone wireless CarPlay | Owner reports working perfectly |
+| Android Auto with cable | Working; fullscreen confirmed |
+| Android Auto wirelessly | Unreliable in the owner's tests; use a cable for the reliable path |
 
-Credit to [CarLink](https://github.com/F-e-n-y-x/CarLink),
-[DiPlay](https://github.com/shihabal3amri/DiPlay) and
-[Open Headunit](https://github.com/andreknieriem/open-headunit).
-Original installer code/docs use the [MIT license](LICENSE); upstream software
-and modifications retain their own licensing. See [third-party notices](THIRD_PARTY_NOTICES.md).
+For wireless CarPlay, keep the iPhone's Bluetooth and Wi-Fi enabled and complete
+CarLink's on-screen pairing. These are owner-observed results, not a long-duration
+reliability qualification. Microphone/Siri/call audio and cold ignition cycles
+remain separate tests. [Evidence and limits](docs/verified-findings.md).
+
+For later laptop work, disconnect the phone, return to **Device模式**, and
+reconnect the laptop. Reuse the original state directory and connection options.
+
+## Manual installation
+
+Without an AI agent, run the same guarded installer yourself:
+
+1. Download/extract the repository and install **Python 3.10+** from
+   [python.org](https://www.python.org/downloads/) if needed.
+2. Follow the car menu/debugging steps in Automatic installation above. Connect
+   the laptop in **Device模式** and authorize it.
+3. Open a terminal in the extracted repository folder and run:
+
+   ```sh
+   python3 prepare.py --json
+   python3 oshan_x7.py check --json
+   python3 oshan_x7.py setup --reboot-check --json
+   ```
+
+   On Windows, use **`py -3`** instead of `python3`. Preparation finds or downloads
+   ADB locally. Stop if `check` reports a mismatch. Add `--adb`, `--adb-port`,
+   `--serial` or `--state-dir` only as needed, and reuse them for later commands.
+4. Keep the laptop connected until the reboot check finishes. Then follow
+   **How to use** above. CarLink permissions are included in setup; there is no
+   separate permission command.
+
+The installer downloads and verifies the official APK itself. For an already
+downloaded copy, add `--apk /path/to/CarLink-1.0.7.apk` to `setup`; the same exact
+release hash is required. [Artifact pins and stages](docs/carlink-setup.md).
+
+To inspect or recover, reconnect in Device mode and reuse the original backup:
+
+```sh
+python3 oshan_x7.py status --json
+python3 oshan_x7.py restore --json
+```
+
+Restore reverses only recorded changes and preserves preexisting apps and
+unrelated accessibility services. Recovery requires responsive Android/package
+management and authorized USB. Returning to Device mode with an unusable
+launcher/menu remains unqualified. [Recovery guide](docs/recovery.md).
+
+[Reference screenshots](docs/screenshots.md) · [Automatic permissions](docs/permissions.md) ·
+[Launcher](docs/launcher.md) · [Testing](docs/testing.md) · [Contributing](CONTRIBUTING.md)
+
+Credit to [CarLink](https://github.com/F-e-n-y-x/CarLink) and its DiPlay/DiAuto
+components. Original installer code/docs use [MIT](LICENSE); upstream software
+retains its own licensing. [Third-party notices](THIRD_PARTY_NOTICES.md).
 APKs, signing keys, phone data and private backups are not published.
-[Contributing](CONTRIBUTING.md).

@@ -116,8 +116,8 @@ class FakeADB(tool.ADB):
         return subprocess.CompletedProcess(args, 0, text, "")
 
     def respond(self, words, root):
-        if words == ["pm", "list", "packages", "--user", "0", tool.RECEIVER]:
-            return "package:" + tool.RECEIVER if self.packages[tool.RECEIVER]["installed"] else ""
+        if words[:5] == ["pm", "list", "packages", "--user", "0"]:
+            return "package:" + words[-1] if self.packages.get(words[-1], {}).get("installed") else ""
         if words == ["cat", "/proc/sys/kernel/random/boot_id"]:
             return self.boot_id
         if words[:2] == ["logcat", "-d"]:
@@ -510,7 +510,7 @@ class ParsingAndCLITests(unittest.TestCase):
 
     def test_json_check_emits_one_object_and_never_exposes_xml(self):
         car, output = FakeADB(), io.StringIO()
-        with patch.object(tool, "ADB", return_value=car), contextlib.redirect_stdout(output):
+        with patch.object(tool, "ADB", return_value=car), patch("carlink_setup.run", side_effect=lambda core, adb, state, args: core.run_commands(adb, state, args)), contextlib.redirect_stdout(output):
             code = tool.main(["check", "--json"])
         result = json.loads(output.getvalue())
         self.assertEqual(0, code)

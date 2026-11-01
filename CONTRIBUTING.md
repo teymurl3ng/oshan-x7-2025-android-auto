@@ -3,8 +3,8 @@
 If you get this working on another Oshan X7, I'd like to hear what headunit and
 firmware you have. For now, I'm keeping this repo focused on the wired setup I
 got working on my car. The current reference configuration is CarLink with
-owner-confirmed fullscreen Android Auto and CarPlay; OpenHU instructions are
-retained as historical documentation and for existing recovery journals.
+owner-confirmed fullscreen Android Auto and CarPlay. Public setup installs
+official CarLink directly; earlier journals retain their recovery compatibility.
 
 If you find a problem, please include the tool version, command, mismatch/error message,
 firmware/MCU versions, and whether a device operation had started. Redact device

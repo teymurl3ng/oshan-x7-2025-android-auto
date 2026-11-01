@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Guarded CarLink migration and historical AA setup for the tested Oshan X7."""
+"""Install fullscreen CarLink and its factory Home card on the tested Oshan X7."""
 
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ import health_checks as health
 from prepare import find_adb
 from launcher_patch import apply as apply_launcher_patch, PatchError
 
-VERSION = "0.4.0"
+VERSION = "0.5.0"
 ROOT = Path(__file__).resolve().parent
 PROFILE_PATH = ROOT / "profiles" / "f202-mca-rhd-20241022.json"
 CARAUTO = "com.eryanet.vlink"
@@ -168,7 +168,8 @@ def parse_package(text):
     return result
 
 
-def parse_layout(xml, package_name=RECEIVER):
+def parse_layout(xml, package_name=None):
+    package_name = RECEIVER if package_name is None else package_name
     try:
         root = ET.fromstring(xml)
     except ET.ParseError as exc:
@@ -239,7 +240,7 @@ def launcher_state(adb, check_home=True, extra_update=None):
     else:
         valid = (sha == pin["update"]["sha256"] and updated and
                  re.fullmatch(r"/data/app/com\.chinatsp\.launcher-[A-Za-z0-9_+=@~-]+/base\.apk", path))
-        build = "openhu"
+        build = pin["update"].get("build", "openhu")
         if extra_update and sha == extra_update["sha256"]:
             valid = (updated and re.fullmatch(
                 r"/data/app/com\.chinatsp\.launcher-[A-Za-z0-9_+=@~-]+/base\.apk", path))
@@ -254,18 +255,23 @@ def launcher_state(adb, check_home=True, extra_update=None):
             "version_code": pin["version_code"], "updated_system_app": updated, "home": home}
 
 
-def receiver_state(adb):
-    state = package(adb, RECEIVER)
+def active_package(adb, name):
+    state = package(adb, name)
     # On this Android 9 build, uninstall -k can retain a dumpsys PackageSetting
     # whose default User 0 state still says installed=true, with no active code.
     # Confirm active registration rather than treating retained data as an app.
     if state["installed"]:
-        listed = adb.shell("pm", "list", "packages", "--user", "0", RECEIVER)
+        listed = adb.shell("pm", "list", "packages", "--user", "0", name)
         lines = [line.strip() for line in listed.splitlines() if line.strip()]
         if any(not re.fullmatch(r"package:[A-Za-z0-9_.]+", line) for line in lines):
-            raise SetupError("Cannot read active OpenHU package registration.")
-        if "package:" + RECEIVER not in lines:
+            raise SetupError("Cannot read active receiver package registration.")
+        if "package:" + name not in lines:
             state = {"installed": False}
+    return state
+
+
+def receiver_state(adb):
+    state = active_package(adb, RECEIVER)
     state["verified"] = not state["installed"]
     if state["installed"]:
         state["sha256"] = remote_hash(adb, apk_path(adb, RECEIVER))
@@ -273,6 +279,15 @@ def receiver_state(adb):
         state["verified"] = (state.get("version_code") == pin["version_code"] and
                              state.get("version_name") == pin["version_name"] and
                              state["sha256"] == pin["sha256"])
+        if pin.get("ordinary_app"):
+            raw = adb.shell("dumpsys", "package", RECEIVER)
+            uid = re.search(r"^\s*userId=(\d+)\s*$", raw, re.M)
+            flags = re.search(r"^\s*(?:pkgFlags|flags)=\[([^\]]*)\]", raw, re.M)
+            state["verified"] = bool(state["verified"] and uid and 10000 <= int(uid[1]) <= 19999 and
+                flags and not {"SYSTEM", "UPDATED_SYSTEM_APP"}.intersection(flags[1].split()) and
+                not re.search(r"^\s*sharedUser=", raw, re.M) and
+                re.fullmatch(r"/data/app/" + re.escape(RECEIVER) + r"-[A-Za-z0-9_+=@~-]+/base\.apk",
+                             apk_path(adb, RECEIVER)))
     return state
 
 
@@ -326,16 +341,39 @@ def inspect(adb, recovery=False, launcher_update=None):
         xml = adb.shell("cat", PREFS, root=True)
         layout = parse_layout(xml)
         prefs_readable = True
+        permission = PROFILE["receiver"].get("exclusive_permission")
+        if permission:
+            try:
+                registry = ET.fromstring(adb.shell("cat", "/data/system/packages.xml", root=True))
+            except ET.ParseError as exc:
+                raise SetupError("Cannot verify the receiver permission registry.") from exc
+            if registry.tag != "packages":
+                raise SetupError("Cannot identify the receiver permission registry.")
+            if any(item.get("name") == permission and item.get("package") != RECEIVER
+                   for item in registry.findall("./permissions/item")):
+                issues.append("Another installed package owns a permission required by CarLink; stop setup.")
     except SetupError as exc:
         issues.append(str(exc))
     try:
         receiver = receiver_state(adb)
         if not receiver["verified"] or (receiver["installed"] and receiver["enabled"] not in (0, 1)):
-            issues.append("Existing Open Headunit is not the pinned, enabled 3.5.0 APK. "
+            issues.append("Existing " + PROFILE["receiver"].get("label", "Open Headunit") +
+                          " is not the pinned, enabled " + PROFILE["receiver"]["version_name"] + " APK. "
                           "It will not be replaced or downgraded.")
     except SetupError as exc:
         receiver = {"installed": None, "verified": False}
         issues.append(str(exc))
+    for name in PROFILE.get("competing_receivers", ()):
+        other = active_package(adb, name)
+        if other["installed"] and other["enabled"] in (0, 1):
+            issues.append("Another projection receiver is enabled: " + name + "; stop setup.")
+    permission_state = None
+    if PROFILE.get("permission_setup") and receiver.get("installed") and receiver.get("verified") and root_available:
+        try:
+            import carlink_permissions
+            permission_state = carlink_permissions.snapshot(sys.modules[__name__], adb)
+        except SetupError as exc:
+            issues.append(str(exc))
     return {"compatible": not failures and (recovery or not issues),
             "setup_compatible": not failures and not issues,
             "recovery_eligible": not failures, "profile": PROFILE["id"],
@@ -344,7 +382,8 @@ def inspect(adb, recovery=False, launcher_update=None):
             "fullscreen_value": layout, "prefs_readable": prefs_readable,
             "usb_mode": props.get("OTG_MODE", "unknown"), "boot_completed": booted,
             "firmware": props["ro.build.display.id"], "root_available": root_available,
-            "root": "su 0" if root_available else None, "launcher": launcher, "_prefs_xml": xml}
+            "root": "su 0" if root_available else None, "launcher": launcher,
+            "carlink_permissions": permission_state, "_prefs_xml": xml}
 
 
 def require_compatible(report):
@@ -373,7 +412,8 @@ def verify_apk(path):
     path = Path(path).resolve()
     pinned = PROFILE["receiver"]
     if not path.is_file() or path.stat().st_size != pinned["bytes"] or digest(path) != pinned["sha256"]:
-        raise SetupError("APK size/SHA-256 does not match the pinned Open Headunit 3.5.0 release.")
+        raise SetupError("APK size/SHA-256 does not match the pinned " +
+                         PROFILE["receiver"].get("label", "Open Headunit") + " release.")
     return path
 
 
@@ -383,7 +423,7 @@ def obtain_apk(state_dir, supplied=None):
     state_dir = Path(state_dir).expanduser().resolve()
     cache = state_dir / "cache"
     cache.mkdir(parents=True, exist_ok=True, mode=0o700)
-    target = cache / "open-headunit-3.5.0.apk"
+    target = cache / PROFILE["receiver"].get("filename", "open-headunit-3.5.0.apk")
     if target.exists():
         return verify_apk(target)
     fd, temporary = tempfile.mkstemp(prefix="download-", dir=cache)
@@ -436,7 +476,7 @@ def prepare_launcher(adb, folder):
         raise SetupError("Bundled launcher patch is missing or changed; download a complete repo copy.")
     folder.mkdir(parents=True, exist_ok=True, mode=0o700)
     factory = folder / "factory-launcher.apk"
-    target = folder / "openhu-launcher.apk"
+    target = folder / update.get("filename", "openhu-launcher.apk")
     if factory.exists():
         verify_launcher_file(factory, factory=True)
     else:
@@ -504,7 +544,8 @@ def load_backup(path, adb):
     if value["schema"] == 2:
         launcher = original.get("launcher")
         pin = PROFILE["launcher"]
-        if (not isinstance(launcher, dict) or launcher.get("build") not in {"factory", "openhu"} or
+        if (not isinstance(launcher, dict) or launcher.get("build") not in
+                {"factory", pin["update"].get("build", "openhu")} or
                 launcher.get("uid") != pin["uid"] or launcher.get("version_code") != pin["version_code"] or
                 launcher.get("sha256") != (pin["sha256"] if launcher["build"] == "factory" else pin["update"]["sha256"])):
             raise SetupError("Backup contains an invalid original launcher identity.")
@@ -556,7 +597,8 @@ def set_enabled(adb, value):
         raise SetupError("CarAuto enabled state did not match the requested value.")
 
 
-def broadcast_layout(adb, value, package_name=RECEIVER):
+def broadcast_layout(adb, value, package_name=None):
+    package_name = RECEIVER if package_name is None else package_name
     adb.shell("am", "broadcast", "--user", "0", "-p", SYSTEMUI,
               "-a", "com.chinatsp.systemui.ACTION_APP_INFO", "--es", "packageName", package_name,
               "--ei", "appCentered", str(value), root=True)
@@ -569,7 +611,8 @@ def broadcast_layout(adb, value, package_name=RECEIVER):
     raise SetupError("Factory fullscreen preference did not persist. Reconnect and run restore.")
 
 
-def refresh(adb, package_name=RECEIVER):
+def refresh(adb, package_name=None):
+    package_name = RECEIVER if package_name is None else package_name
     adb.shell("am", "broadcast", "--user", "0", "-p", SYSTEMUI,
               "-a", "com.chinatsp.activity.onpostresume", "--es", "packageName", package_name, root=True)
 
@@ -591,11 +634,11 @@ def install_launcher(adb, path):
     if (before["launcher"]["build"] != "factory" or before["usb_mode"] != "1" or
             before["carauto"]["enabled"] != 3 or before["fullscreen_value"] != 0 or
             not before["receiver"]["installed"]):
-        raise SetupError("Launcher installation requires the verified factory and wired-AA baseline.")
+        raise SetupError("Launcher installation requires the verified factory, receiver and fullscreen baseline.")
     result = adb.run("install", "--no-streaming", "-r", str(path), timeout=180)
     if not re.search(r"^Success\s*$", result.stdout, re.M):
         raise SetupError("Launcher installation did not confirm success; reconnect and run restore.")
-    if launcher_state(adb)["build"] != "openhu":
+    if launcher_state(adb)["build"] != PROFILE["launcher"]["update"].get("build", "openhu"):
         raise SetupError("Installed launcher did not pass APK/UID/HOME read-back.")
 
 
@@ -669,6 +712,12 @@ def _restore_locked(adb, path, journal):
             return healthy_systemui(adb, baseline)
         step("restore_fullscreen", restore_layout)
 
+    permissions_ok = True
+    if PROFILE.get("permission_setup"):
+        import carlink_permissions
+        permissions_ok = step("restore_permissions", lambda: carlink_permissions.restore(
+            sys.modules[__name__], adb, path.parents[2]))
+
     carauto_ok = True
     if touched(journal, "disable_carauto"):
         def restore_carauto():
@@ -687,8 +736,8 @@ def _restore_locked(adb, path, journal):
 
     if not original["receiver"]["installed"] and touched(journal, "install_receiver"):
         def remove_receiver():
-            if not home_ok or not carauto_ok:
-                raise SetupError("Receiver retained until Home and CarAuto recovery verify successfully.")
+            if not home_ok or not carauto_ok or not permissions_ok:
+                raise SetupError("Receiver retained until Home, CarAuto and permission recovery verify successfully.")
             current = receiver_state(adb)
             if not current["installed"]:
                 return {"unchanged": True}
@@ -758,7 +807,8 @@ def reboot_check(adb):
 def configured(report):
     return (report["compatible"] and report["carauto"]["enabled"] == 3 and
             report["fullscreen_value"] == 0 and report["receiver"]["installed"] and
-            report["launcher"]["build"] == "openhu")
+            report["launcher"]["build"] == PROFILE["launcher"]["update"].get("build", "openhu") and
+            (not PROFILE.get("permission_setup") or bool((report.get("carlink_permissions") or {}).get("ready"))))
 
 
 def setup(adb, state_dir, report, supplied_apk=None, verify_reboot=False):
@@ -816,6 +866,10 @@ def setup(adb, state_dir, report, supplied_apk=None, verify_reboot=False):
                           lambda: healthy_launch(adb, PROFILE["launcher"]["home"]))
                 if apk is not None:
                     stage("install_receiver", lambda: install(adb, apk))
+                if PROFILE.get("permission_setup"):
+                    import carlink_permissions
+                    stage("permissions", lambda: carlink_permissions.apply(
+                        sys.modules[__name__], adb, state_dir))
                 stage("verify_receiver", lambda: healthy_launch(adb, MAIN_ACTIVITY))
                 if report["carauto"]["enabled"] != 3:
                     def disable_carauto():
@@ -878,11 +932,11 @@ def setup_result(path, journal, report, already=False):
             "device_writes": not already, "projection_tested": False,
             "android_reboot_verified": rebooted, "launcher": report["launcher"],
             "next_action": "phone_handoff" if rebooted else "rerun_setup_with_reboot_check",
-            "next": (["Complete onboarding/visible permissions on the car; choose USB and right-hand drive.",
-                      "Disconnect the laptop, select Host模式, and connect the phone to the recording USB port.",
-                      "Accept phone/USB prompts; check real Maps, sound, touch, large AA card, Home and native controls."]
+            "next": (["Complete car/profile onboarding if shown; use right-hand drive.",
+                      "Disconnect the laptop, select Host模式, and connect the phone to the regular charging/CarAuto USB port.",
+                      "Complete phone-side pairing/trust if requested; check projection, sound, touch, the large card, Home and native controls."]
                      if rebooted else ["Keep the laptop connected in Device mode. Run setup --reboot-check."]),
-            "note": "Microphone recognition remains unresolved; wireless and cold ignition cycles are untested."}
+            "note": "Microphone recognition remains unresolved; phone behavior and cold ignition require separate observations."}
 
 
 def restore(adb, state_dir, report=None):
@@ -902,10 +956,9 @@ def public_report(report):
 
 def parser():
     result = argparse.ArgumentParser(description=__doc__)
-    result.add_argument("command", choices=("check", "setup", "status", "restore",
-                                           "carlink-check", "carlink-trial", "carlink-restore", "carlink-fullscreen",
-                                           "carlink-promote", "carlink-reference-start", "carlink-reference-collect",
-                                           "carlink-reference-pages"))
+    result.add_argument("command", metavar="{check,setup,status,restore}", choices=("check", "setup", "status", "restore",
+                                           "carlink-check", "carlink-restore", "carlink-reference-start",
+                                           "carlink-reference-collect", "carlink-reference-pages"))
     result.add_argument("--version", action="version", version=VERSION)
     found = find_adb()
     default_adb = str(found[0]) if found else "adb"
@@ -916,11 +969,42 @@ def parser():
                         help="Local private backup/cache directory; keep it for restore")
     result.add_argument("--apk", type=Path, help="Use an already downloaded pinned APK instead of downloading")
     result.add_argument("--reboot-check", action="store_true",
-                        help="With setup, carlink-trial or carlink-promote, verify an Android reboot over USB")
-    result.add_argument("--remove-openhu", action="store_true",
-                        help="With carlink-trial, back up and uninstall OpenHU for user 0, retaining its data")
+                        help="Verify an Android reboot over USB before phone handoff")
     result.add_argument("--json", action="store_true", help="Emit one JSON object for agent/tool use")
     return result
+
+
+def run_commands(adb, state_dir, args):
+    report = inspect(adb, recovery=args.command in ("restore", "status"))
+    if args.command in ("check", "status"):
+        result = public_report(report)
+        result["device_writes"] = False
+        result["projection_tested"] = False
+        if adb.serial:
+            path = backup_path(adb, state_dir)
+            result["backup_exists"] = path.exists()
+            if path.exists():
+                journal = load_backup(path, adb)
+                result["backup_phase"] = journal["phase"]
+                result["failed_stage"] = journal.get("failed_stage")
+                result["recovery_errors"] = journal.get("recovery_errors", {})
+                result["android_reboot_verified"] = bool(journal.get("android_reboot_verified"))
+                result["next_action"] = ("restore" if journal["phase"] not in
+                    {"configured", "restored", "waiting_for_permissions"} else
+                    {"configured": "phone_handoff" if journal.get("android_reboot_verified") else
+                     "rerun_setup_with_reboot_check", "restored": "restore_complete",
+                     "waiting_for_permissions": "accept_car_permission_then_rerun_setup"}[journal["phase"]])
+            if not report["compatible"]:
+                result["next_action"] = "diagnose_identity_mismatch_no_writes"
+            elif args.command == "status" and report.get("component_issues"):
+                result["next_action"] = "inspect_component_issues_and_restore_if_needed"
+        code = 0 if report["compatible"] else 2
+    elif args.command == "setup":
+        result = setup(adb, state_dir, report, args.apk, args.reboot_check)
+        code = 3 if result["status"] == "waiting_for_permissions" else 0
+    elif args.command == "restore":
+        result, code = restore(adb, state_dir, report), 0
+    return result, code
 
 
 def main(argv=None):
@@ -929,50 +1013,21 @@ def main(argv=None):
     try:
         if not 1 <= args.adb_port <= 65535:
             raise SetupError("ADB port must be between 1 and 65535.")
-        if args.apk and args.command not in ("setup", "carlink-trial"):
-            raise SetupError("--apk is only used by setup or carlink-trial.")
-        if args.reboot_check and args.command not in ("setup", "carlink-trial", "carlink-promote"):
-            raise SetupError("--reboot-check is only used by setup, carlink-trial or carlink-promote.")
-        if args.remove_openhu and args.command != "carlink-trial":
-            raise SetupError("--remove-openhu is only used by carlink-trial.")
+        if args.apk and args.command != "setup":
+            raise SetupError("--apk is only used by setup.")
+        if args.reboot_check and args.command != "setup":
+            raise SetupError("--reboot-check is only used by setup.")
         adb = ADB(args.adb, args.adb_port, args.serial)
         state_dir = args.state_dir.expanduser().resolve()
         if args.command.startswith("carlink-"):
             import carlink_trial
             result = carlink_trial.run(sys.modules[__name__], adb, state_dir, args.command,
-                                      args.apk, args.reboot_check, args.remove_openhu)
+                                      args.apk, args.reboot_check)
             code = (3 if result["status"] == "waiting_for_permissions" else
                     2 if result.get("trial_eligible") is False else 0)
         else:
-            report = inspect(adb, recovery=args.command in ("restore", "status"))
-        if args.command in ("check", "status"):
-            result = public_report(report)
-            result["device_writes"] = False
-            result["projection_tested"] = False
-            if adb.serial:
-                path = backup_path(adb, state_dir)
-                result["backup_exists"] = path.exists()
-                if path.exists():
-                    journal = load_backup(path, adb)
-                    result["backup_phase"] = journal["phase"]
-                    result["failed_stage"] = journal.get("failed_stage")
-                    result["recovery_errors"] = journal.get("recovery_errors", {})
-                    result["android_reboot_verified"] = bool(journal.get("android_reboot_verified"))
-                    result["next_action"] = ("restore" if journal["phase"] not in
-                        {"configured", "restored", "waiting_for_permissions"} else
-                        {"configured": "phone_handoff" if journal.get("android_reboot_verified") else
-                         "rerun_setup_with_reboot_check", "restored": "restore_complete",
-                         "waiting_for_permissions": "accept_car_permission_then_rerun_setup"}[journal["phase"]])
-                if not report["compatible"]:
-                    result["next_action"] = "diagnose_identity_mismatch_no_writes"
-                elif args.command == "status" and report.get("component_issues"):
-                    result["next_action"] = "inspect_component_issues_and_restore_if_needed"
-            code = 0 if report["compatible"] else 2
-        elif args.command == "setup":
-            result = setup(adb, state_dir, report, args.apk, args.reboot_check)
-            code = 3 if result["status"] == "waiting_for_permissions" else 0
-        elif args.command == "restore":
-            result, code = restore(adb, state_dir, report), 0
+            import carlink_setup
+            result, code = carlink_setup.run(sys.modules[__name__], adb, state_dir, args)
         if args.json:
             print(json.dumps({"ok": code == 0, **result}))
         else:

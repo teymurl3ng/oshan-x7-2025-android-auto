@@ -84,7 +84,7 @@ def observe(adb, name, baseline=None, foreground=False, timeout=12, samples=3, e
                 r"(?:com\.android\.packageinstaller|com\.google\.android\.packageinstaller|"
                 r"com\.android\.permissioncontroller|com\.google\.android\.permissioncontroller)"
                 r"/.*GrantPermissionsActivity", activity):
-            raise PermissionsPending("Accept the visible Open Headunit permission prompt on the car, "
+            raise PermissionsPending("Accept the visible app permission prompt on the car, "
                                      "then rerun the same setup command with the laptop connected.")
         foreground_ok = not foreground or (activity and activity.split("/")[0] == name)
         if expected_activity:
