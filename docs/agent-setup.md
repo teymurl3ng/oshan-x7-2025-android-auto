@@ -11,6 +11,9 @@ paths, or fix PATH variables. Then use the firmware-gated CLI for the car change
 
 ## 1. Inspect the laptop and get the repository
 
+- The README's automatic-install prompt is a starting point on a laptop with
+  no project or tools installed. Download/extract the project yourself; do not
+  ask the owner to clone it, download a ZIP, install Git or prepare a repo folder.
 - Identify the real host OS and CPU. Use native Windows tools for a Windows USB
   connection; do not assume a WSL container or a remote sandbox can see local USB.
 - Use an existing checkout if available. Otherwise clone the repo if Git works.
@@ -22,6 +25,11 @@ paths, or fix PATH variables. Then use the firmware-gated CLI for the car change
 - Read this guide, AGENTS.md, and the car-screen guide. Check for an existing
   `.oshan-x7` backup before starting a new cycle. Preserve an existing checkout and
   its backup rather than downloading over it.
+- Once laptop preparation is complete, request the remaining physical/menu
+  actions one at a time. State the device, screen, control and expected result;
+  wait for the owner's reply or machine read-back, then continue. Skip steps
+  already established by the current connection. Keep handling routine computer
+  commands and diagnostics yourself between those requests.
 
 ## 2. Find or install Python
 

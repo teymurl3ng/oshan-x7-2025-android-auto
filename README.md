@@ -17,32 +17,73 @@ A matching badge/year is insufficient. [Compatibility details](docs/reference.md
 
 ## Automatic installation
 
-Use a local AI coding agent on the laptop you will connect to the car.
-[Download this repository](https://github.com/teymurl3ng/oshan-x7-2025-android-auto/archive/refs/heads/main.zip),
-extract it, open the folder in the agent, and give it this instruction:
+On the laptop you will connect to the car, open a local AI coding agent with
+terminal and internet access. **Paste this prompt to start.** The agent downloads
+the project, gets any missing tools, checks the car and runs the installation.
 
-> Set up this repository on my Oshan X7. Read AGENTS.md and the linked runbooks.
-> Prepare Python and ADB on this laptop, run the read-only compatibility check,
-> then run the guarded setup with its Android reboot check. Handle the automatic
-> CarLink permissions, fullscreen and launcher update. Preserve the original
-> backup and journal. Ask me only for physical car/USB actions, unavoidable OS
-> authorization and actual phone/control tests. Stop on compatibility mismatches.
+```text
+Install CarLink on my Oshan X7 using this project:
+https://github.com/teymurl3ng/oshan-x7-2025-android-auto
 
-The agent handles laptop tools and runs the installer. You operate the car:
+Do the computer work yourself, from downloading the project through setup and
+verification. Guide me through the parts that require my hands, one step at a time.
 
-1. Park the car and keep it powered. Open **Phone → `*#*#888` → Call → `1111` →
-   `开发模式`**. The outer PIN **1111** worked on the reference car. If the
-   development page asks separately, its code-only default is **3821**; that
-   separate PIN has no recorded live-entry test and may have been changed.
-   Stop if rejected.
-2. Enable **Settings → System → Advanced → Developer options → USB debugging /
-   `USB 调试`** if needed. If Developer options is hidden, tap **Build number**
-   seven times in About device/tablet.
-3. Return to `开发模式`, select **Device模式**, connect the laptop with a data
-   cable and accept its debugging authorization. Keep Device mode selected
-   through installation and the normal Android reboot check.
+1. Inspect this laptop's OS/CPU and local USB access. Look for an existing copy
+   of this project and its private backup first; preserve and reuse them. Otherwise
+   download the project into a writable folder. Use Git if it already works, or
+   download and extract this ZIP with the host's available tools:
+   https://github.com/teymurl3ng/oshan-x7-2025-android-auto/archive/refs/heads/main.zip
+   Handle the download and extraction yourself; Git is optional.
 
-[Car menu labels and pictures](docs/car-menu.md) · [Agent runbook](docs/agent-setup.md).
+2. Read AGENTS.md, docs/agent-setup.md, docs/car-menu.md, docs/permissions.md and
+   docs/recovery.md from that copy. Find and execute Python to verify 3.10+;
+   install it if missing or too old. Install missing tools/dependencies from
+   the trusted sources in the runbook. Run prepare.py --json to find or download
+   ADB and verify the returned tools. Diagnose driver, USB or tool failures
+   yourself. If an OS approval needs my action, explain exactly what I must
+   approve and wait for that action.
+
+3. Guide me through the car connection only when the laptop is ready. Ask for
+   one physical action at a time, naming the device, screen and control. Wait
+   for my reply or verified device read-back before the next action. Skip steps
+   already completed; do not ask me to repeat working USB/debugging setup.
+   Use these instructions inline when needed:
+   - Park the car and keep it powered. On the car's Phone dial pad enter
+     *#*#888, tap Call, enter the outer PIN 1111, then open 开发模式.
+   - If that development page separately asks for a PIN, its code-only default
+     is 3821. Outer 1111 worked on the reference car; separate 3821 has no
+     recorded live-entry test and may have been changed. Stop if rejected.
+   - Enable Settings → System → Advanced → Developer options → USB debugging
+     (USB 调试) if needed. If Developer options is hidden, tap Build number
+     seven times in About device/tablet first.
+   - Return to 开发模式, select Device模式, connect this laptop by USB data cable,
+     and have me accept its debugging authorization if shown.
+
+4. Verify authorized USB access, then run check --json using oshan_x7.py. Stop
+   on firmware/app/launcher mismatches and explain them; do not bypass checks.
+   Use only the firmware's existing root; do not root/flash or enable network ADB.
+   If compatible, run setup --reboot-check --json. Let the installer download
+   and verify its app/launcher artifacts, save backups, configure permissions,
+   fullscreen and the large Home card, and verify the Android reboot.
+   Keep the same interpreter, ADB path/port, USB target and state directory.
+   Keep the laptop connected in Device mode until these checks finish. Diagnose
+   failures and use the original journal's recovery flow if needed; never
+   replace an interrupted backup with a new baseline.
+
+5. When installation and reboot checks pass, guide me through disconnecting
+   the laptop, selecting Host模式 and connecting my phone to the regular
+   charging/CarAuto USB port. Walk me through any car/profile onboarding or
+   phone prompts that still need my action. A car-side USB prompt may still
+   need tapping; do not claim every prompt is automated. Have me test projection,
+   fullscreen, the large CarLink card, Home return, sound and native controls.
+   Finish by reporting what passed, what remains untested, and the exact backup
+   location and recovery instructions. Do not call an app launch a phone test.
+```
+
+The agent should handle downloads, commands and routine troubleshooting. Your
+part is entering car codes, connecting cables, approving requests that need a
+person and testing the result. It should explain each action when it is needed.
+[Car menu pictures](docs/car-menu.md) · [Agent runbook](docs/agent-setup.md).
 
 Setup installs the unchanged **official CarLink 1.0.7 APK**, grants its Android 9
 runtime/special access automatically, disables the competing factory CarAuto
@@ -89,22 +130,42 @@ reconnect the laptop. Reuse the original state directory and connection options.
 
 Without an AI agent, run the same guarded installer yourself:
 
-1. Download/extract the repository and install **Python 3.10+** from
+Commands below use **`python3`**. On Windows, use **`py -3`** instead.
+
+1. [Download and extract the repository](https://github.com/teymurl3ng/oshan-x7-2025-android-auto/archive/refs/heads/main.zip).
+   Install **Python 3.10+** from
    [python.org](https://www.python.org/downloads/) if needed.
-2. Follow the car menu/debugging steps in Automatic installation above. Connect
-   the laptop in **Device模式** and authorize it.
-3. Open a terminal in the extracted repository folder and run:
+2. Open a terminal in the extracted repository folder and prepare ADB:
 
    ```sh
    python3 prepare.py --json
+   ```
+
+   Preparation finds or downloads ADB locally.
+3. Park the car and keep it powered. On its **Phone** dial pad enter
+   **`*#*#888` → Call → `1111` → `开发模式`**. If the development page asks for
+   its separate PIN, the code-only default is **3821**; that separate PIN has
+   no recorded live-entry test and may have been changed. Stop if rejected.
+4. Enable **Settings → System → Advanced → Developer options → USB debugging /
+   `USB 调试`** if needed. If Developer options is hidden, tap **Build number**
+   seven times in About device/tablet. Return to `开发模式`, select
+   **Device模式**, connect the laptop with a USB data cable and accept its
+   debugging authorization. [Car menu pictures](docs/car-menu.md).
+5. Check compatibility:
+
+   ```sh
    python3 oshan_x7.py check --json
+   ```
+
+   Stop if the check reports a mismatch. If the car is compatible, run:
+
+   ```sh
    python3 oshan_x7.py setup --reboot-check --json
    ```
 
-   On Windows, use **`py -3`** instead of `python3`. Preparation finds or downloads
-   ADB locally. Stop if `check` reports a mismatch. Add `--adb`, `--adb-port`,
-   `--serial` or `--state-dir` only as needed, and reuse them for later commands.
-4. Keep the laptop connected until the reboot check finishes. Then follow
+   Add `--adb`, `--adb-port`, `--serial` or `--state-dir` only as needed, and
+   reuse them for later commands.
+6. Keep the laptop connected until the reboot check finishes. Then follow
    **How to use** above. CarLink permissions are included in setup; there is no
    separate permission command.
 

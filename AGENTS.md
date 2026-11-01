@@ -6,6 +6,10 @@ CarLink directly on one exact tested firmware. No older receiver is a prerequisi
 
 ## Work autonomously
 
+- Automatic installation starts with the README prompt, before the owner has a
+  checkout or tools. Acquire/extract the repository yourself, preserving any
+  existing checkout and private state. Do not ask the owner to download the repo
+  or install Git as a prerequisite.
 - Detect the local laptop OS/CPU, execute Python to verify 3.10+, install missing
   tools from the trusted sources in agent-setup.md, then run `prepare.py --json`.
   Use its absolute ADB path. Git is optional; the repo ZIP is sufficient.
@@ -19,6 +23,9 @@ CarLink directly on one exact tested firmware. No older receiver is a prerequisi
   Keep these steps inline in owner-facing guidance; car-menu.md supplements them.
 - Diagnose missing USB before writes. Existing authorized ADB needs no repeated
   menu onboarding. Run `check --json`, then `setup --reboot-check --json`.
+- Request remaining owner actions one at a time, naming the device, screen,
+  control and expected result. Wait for a reply or verified read-back before
+  moving on; continue routine computer work yourself between those requests.
 - CarLink permissions are automatic inside setup. Do not send the owner through
   the app's permission screens or ask approval for each grant. The pinned Android
   9 runtime/app-op/battery grants and built-in USB auto-confirm service are
